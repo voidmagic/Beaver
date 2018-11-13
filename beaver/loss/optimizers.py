@@ -1,0 +1,53 @@
+# -*- coding: utf-8 -*-
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as func
+import torch.optim as optim
+
+
+class WarmAdam(object):
+    def __init__(self, params, lr, hidden_size, warm_up):
+        self.original_lr = lr
+        self.n_step = 0
+        self.hidden_size = hidden_size
+        self.warm_up_step = warm_up
+        self.optimizer = optim.Adam(params, betas=[0.9, 0.997], eps=1e-9)
+
+    def step(self):
+        self.n_step += 1
+        warm_up = min(self.n_step ** (-0.5), self.n_step * self.warm_up_step ** (-1.5))
+        lr = self.original_lr * (self.hidden_size ** (-0.5) * warm_up)
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+        self.optimizer.step()
+
+
+class LabelSmoothingLoss(nn.Module):
+    """
+    With label smoothing,
+    KL-divergence between q_{smoothed ground truth prob.}(w)
+    and p_{prob. computed by model}(w) is minimized.
+    """
+    def __init__(self, label_smoothing, tgt_vocab_size, ignore_index):
+        self.padding_idx = ignore_index
+        super(LabelSmoothingLoss, self).__init__()
+
+        smoothing_value = label_smoothing / (tgt_vocab_size - 2)
+        one_hot = torch.full((tgt_vocab_size,), smoothing_value)
+        one_hot[self.padding_idx] = 0
+        self.register_buffer('one_hot', one_hot.unsqueeze(0))
+
+        self.confidence = 1.0 - label_smoothing
+
+    def forward(self, output, target):
+        """
+        output (FloatTensor): batch_size x n_classes
+        target (LongTensor): batch_size
+        """
+        model_prob = self.one_hot.repeat(target.size(0), 1)
+        model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
+        model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
+
+        return func.kl_div(output, model_prob, reduction='sum')
+
