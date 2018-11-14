@@ -147,13 +147,13 @@ The following part will take iwslt 14 de-en data as example to get throuth Beave
     subword-nmt apply-bpe --vocabulary vocab.tgt --vocabulary-threshold 50 -c codes.share < test.tgt.tok > test.tgt.bpe
     ```
 
-5. build vocabuary
+5. build vocabulary
 
     ```
     cat train.src.bpe | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.tgt
     cat train.tgt.bpe | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.src
     ```
-    Or if you want a shared vocabuary:
+    Or if you want a shared vocabulary:
     ```
     cat train.src.bpe train.tgt.bpe | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.share
     ```
@@ -167,14 +167,13 @@ The full parameters can be found in `beaver/utils/parseopt.py`
 
 ## Translation
     ```
-    python3 ${BEAVER}/translate.py -trans test.src.bpe test.tgt.bpe -vocab vocab.8k.share -model_path train
+    python3 ${BEAVER}/translate.py -trans test.src.bpe test.tgt.bpe -vocab vocab.8k.share
     ```
 
 ## TODOs:
 
 1. More hyper-parameters should be exposed.
-2. Implement Multi-GPU beam search(note that its already supported for training).
-3. Model saving and loading logic.
+2. Model saving and loading logic.
 
 ## References:
 * [Attention is all you need](http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf).
