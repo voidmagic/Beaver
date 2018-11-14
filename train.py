@@ -10,7 +10,7 @@ from beaver.data import build_dataset
 from beaver.infer import beam_search
 from beaver.loss import WarmAdam, LabelSmoothingLoss
 from beaver.model import NMTModel, FullModel
-from beaver.utils import Saver
+from beaver.utils import Saver, Loader
 from beaver.utils import calculate_bleu
 from beaver.utils import parseopt, get_device, get_logger
 
@@ -26,6 +26,7 @@ device = get_device()
 logger = get_logger()
 
 saver = Saver(save_path=opt.model_path, max_to_keep=opt.max_to_keep, logger=logger)
+loader = Loader(opt.model_path, opt, logger)
 
 
 def valid(model, valid_dataset):
@@ -67,7 +68,9 @@ def train(model, optimizer, train_dataset, valid_dataset):
             if optimizer.n_step % opt.save_every == 0:
                 with torch.set_grad_enabled(False):
                     valid_bleu = valid(model, valid_dataset)
-                    checkpoint = {"model": model.module.model.state_dict(), "opt": opt}
+                    checkpoint = {"model": model.module.model.state_dict(),
+                                  "opt": opt,
+                                  "optimizer": optimizer.optimizer.state_dict()}
                     saver.save(checkpoint, optimizer.n_step, valid_bleu)
                 model.train()
         del loss
@@ -80,9 +83,9 @@ def main():
     fields = valid_dataset.fields = train_dataset.fields
     logger.info("Build model...")
 
-    model = NMTModel.build_model(opt, fields)
+    model = NMTModel.load_model(loader, fields)
     criterion = LabelSmoothingLoss(opt.label_smoothing, len(fields["tgt"].vocab), fields["tgt"].pad_id)
-    optimizer = WarmAdam(model.parameters(), opt.lr, opt.hidden_size, opt.warm_up)
+    optimizer = WarmAdam(model.parameters(), opt.lr, opt.hidden_size, opt.warm_up, loader.step, loader.checkpoint, device)
 
     model = nn.DataParallel(FullModel(model, criterion)).to(device)
 

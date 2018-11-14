@@ -50,14 +50,11 @@ class NMTModel(nn.Module):
         return cls(encoder, decoder, generator)
 
     @classmethod
-    def load_model(cls, loader, dataset):
-        if loader.last_model:
-            checkpoint = torch.load(loader.last_model, map_location=lambda storage, loc: storage)
-            model = cls.build_model(checkpoint['opt'], dataset.fields)
-            model.load_state_dict(checkpoint['model'])
-            return model
-        else:
-            return cls.build_model(loader.params, dataset.fields)
+    def load_model(cls, loader, fields):
+        model = cls.build_model(loader.params, fields)
+        if not loader.empty:
+            model.load_state_dict(loader.checkpoint['model'])
+        return model
 
 
 class Generator(nn.Module):

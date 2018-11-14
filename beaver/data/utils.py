@@ -5,7 +5,6 @@ from beaver.data.field import Field
 
 
 def build_dataset(opt, data_path, vocab_path, device, train=True):
-    batch_size = opt.batch_size if train else opt.trans_batch
     src = data_path[0]
     tgt = data_path[1]
 
@@ -29,5 +28,5 @@ def build_dataset(opt, data_path, vocab_path, device, train=True):
     src_field.load_vocab(src_words, src_special)
     tgt_field.load_vocab(tgt_words, tgt_special)
 
-    return TranslationDataset(src, tgt, batch_size, device, train, {'src': src_field, 'tgt': tgt_field})
+    return TranslationDataset(src, tgt, opt.batch_size, device, train, {'src': src_field, 'tgt': tgt_field})
 

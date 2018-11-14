@@ -9,7 +9,6 @@ class Saver(object):
         self.ckpt_names = []
         self.save_path = save_path
         self.max_to_keep = max_to_keep
-        self.bleu_logs = []
         if os.path.exists(save_path) and not os.path.isdir(save_path):
             logger.info("%s is not a valid path" % save_path)
             exit()
@@ -22,9 +21,8 @@ class Saver(object):
         self.ckpt_names.append(full_filename)
         torch.save(save_dict, full_filename)
 
-        self.bleu_logs.append("%s\t step: %6d\t bleu: %.2f\n" % (datetime.datetime.now(), step, bleu))
-        with open(os.path.join(self.save_path, "log"), "w", encoding="UTF-8") as log:
-            log.writelines(self.bleu_logs)
+        with open(os.path.join(self.save_path, "log"), "a", encoding="UTF-8") as log:
+            log.write("%s\t step: %6d\t bleu: %.2f\n" % (datetime.datetime.now(), step, bleu))
 
         if 0 < self.max_to_keep < len(self.ckpt_names):
             earliest_ckpt = self.ckpt_names.pop(0)
@@ -32,14 +30,28 @@ class Saver(object):
 
 
 class Loader(object):
-    def __init__(self, save_path, params):
+    def __init__(self, save_path, params, logger):
         self.path = save_path
-        self.params = params
+        self.empty = self.check_empty()
+        self.logger = logger
 
-    @property
-    def last_model(self):
+        self.checkpoint = self.load_checkpoint() if not self.empty else None
+        self.step = self.get_step() if not self.empty else 0
+        self.params = self.checkpoint["opt"] if not self.empty else params
+
+    def check_empty(self):
         if os.path.exists(self.path) and os.path.isdir(self.path):
             fs = [f for f in os.listdir(self.path) if f.startswith("checkpoint")]
             if len(fs) > 0:
-                return os.path.join(self.path, sorted(fs, reverse=True)[0])
-        return None
+                return False
+        return True
+
+    def get_step(self):
+        fs = [f for f in os.listdir(self.path) if f.startswith("checkpoint")]
+        return int(sorted(fs, reverse=True)[0].split("-")[-1])
+
+    def load_checkpoint(self):
+        fs = [f for f in os.listdir(self.path) if f.startswith("checkpoint")]
+        f = os.path.join(self.path, sorted(fs, reverse=True)[0])
+        self.logger.info("Load checkpoint from %s." % f)
+        return torch.load(f, map_location=lambda storage, loc: storage)

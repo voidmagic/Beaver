@@ -150,7 +150,7 @@ class Decoder(nn.Module):
 
         saved_inputs = []
         for i in range(self.num_layers):
-            prev_layer = None if previous is None else previous[i]
+            prev_layer = None if previous is None else previous[:, i]
             tgt_mask = tgt_mask if previous is None else None
 
             output, all_input = self.layers[i](output, enc_out, src_mask, tgt_mask, prev_layer)
@@ -158,7 +158,7 @@ class Decoder(nn.Module):
 
         output = self.layer_norm(output)
 
-        return output, torch.stack(saved_inputs)
+        return output, torch.stack(saved_inputs, dim=1)
 
 
 class MultiHeadedAttention(nn.Module):

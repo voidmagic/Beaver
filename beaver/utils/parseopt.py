@@ -17,7 +17,6 @@ def train_opts(parser):
 
     # for validation
     parser.add_argument("-beam_size",  type=int, default=4, help="Beam size")
-    parser.add_argument("-trans_batch",  type=int, default=5000, help="Translation batch size")
     parser.add_argument("-max_length", type=int, default=150, help="Maximum prediction length")
     parser.add_argument("-length_penalty",  type=float, default=0.6, help="Length penalty")
 
@@ -39,8 +38,8 @@ def translate_opts(parser):
     parser.add_argument("-vocab", type=str, nargs="*", help="Vocab file")
     parser.add_argument("-output", default="output.txt", help="Path to output the predictions")
 
+    parser.add_argument("-batch_size", type=int, default=8192, help="Batch size")
     parser.add_argument("-model_path", help="Path to model checkpoint file")
     parser.add_argument("-beam_size",  type=int, default=4, help="Beam size")
-    parser.add_argument("-trans_batch",  type=int, default=5000, help="Translation batch size")
     parser.add_argument("-max_length", type=int, default=150, help="Maximum prediction length")
     parser.add_argument("-length_penalty",  type=float, default=0.6, help="Length penalty")

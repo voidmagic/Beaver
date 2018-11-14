@@ -17,14 +17,14 @@ def calculate_bleu(hypotheses, references, lowercase=False):
 def file_bleu(hypothesis, reference, lowercase=False):
     # ../../../tools/multi-bleu.perl, so take 3 levels up.
     beaver_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    multi_bleu_path = os.path.join(beaver_path, "tools", "mosesdecoder", "scripts", "generic" "multi-bleu.perl")
-    with open(hypothesis, "r") as read_pred:
+    multi_bleu_path = os.path.join(beaver_path, "tools", "mosesdecoder", "scripts", "generic", "multi-bleu.perl")
+    with open(hypothesis, "r") as read_pred, open("/dev/null", "w") as black_hole:
         bleu_cmd = ["perl", multi_bleu_path]
         if lowercase:
             bleu_cmd += ["-lc"]
         bleu_cmd += [reference]
         try:
-            bleu_out = subprocess.check_output(bleu_cmd, stdin=read_pred).decode("utf-8")
+            bleu_out = subprocess.check_output(bleu_cmd, stdin=read_pred, stderr=black_hole).decode("utf-8")
             bleu_score = re.search(r"BLEU = (.+?),", bleu_out).group(1)
         except subprocess.CalledProcessError:
             bleu_score = -1.0

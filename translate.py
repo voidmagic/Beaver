@@ -19,7 +19,7 @@ opt = parser.parse_args()
 device = get_device()
 logger = get_logger()
 
-loader = Loader(opt.model_path, logger)
+loader = Loader(opt.model_path, opt, logger)
 
 
 def translate(dataset, fields, model):
@@ -45,7 +45,7 @@ def main():
     dataset = build_dataset(opt, opt.trans, opt.vocab, device, train=False)
 
     logger.info("Build model...")
-    model = NMTModel.load_model(loader, dataset).eval().to(device)
+    model = NMTModel.load_model(loader, dataset.fields).eval().to(device)
 
     logger.info("Start translation...")
     with torch.set_grad_enabled(False):
