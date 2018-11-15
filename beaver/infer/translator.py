@@ -36,13 +36,13 @@ def beam_search(opt, model, batch, fields, device):
     alive_scores[:, 0] = 0.
 
     beam_index_expander = torch.arange(batch_size).unsqueeze(1) * beam_size
-    length_penalty = (6 / (5 + torch.arange(opt.max_length))) ** opt.length_penalty
+    length_penalty = (6 / (5 + torch.arange(opt.max_length).float())) ** opt.length_penalty
     inf = torch.tensor(-1e20).to(device)
 
     alive_hypotheses = alive_hypotheses.to(device)
     alive_scores = alive_scores.to(device)
     beam_index_expander = beam_index_expander.to(device)
-    length_penalty = length_penalty.float().to(device)
+    length_penalty = length_penalty.to(device)
 
     finished = [[] for _ in range(batch_size)]
 
@@ -67,16 +67,24 @@ def beam_search(opt, model, batch, fields, device):
         alive_hypotheses = torch.cat([hypotheses, tokens.view(-1).unsqueeze(-1)], dim=-1)
         previous = previous.index_select(0, origin)
 
-        for j, b in enumerate(beams):
-            b.scores = alive_scores[j]
-            b.hypotheses = alive_hypotheses.view(batch_size, beam_size, -1)[j]
-            for idx, tok in enumerate(b.hypotheses[:, -1]):
+        for j in range(batch_size):
+            for idx, tok in enumerate(alive_hypotheses.view(batch_size, beam_size, -1)[j, :, -1]):
                 if tok == eos:
-                    finished[j].append((b.scores[idx].clone(), b.hypotheses[idx, 1:]))
-                    b.finished.append((b.scores[idx].clone(), b.hypotheses[idx, 1:]))
+                    finished[j].append((alive_scores[j, idx].clone(), alive_hypotheses.view(batch_size, beam_size, -1)[j, idx, 1:]))
 
-        if all((b.done for b in beams)):
+        # end condition
+        max_score, _ = torch.max(alive_scores.view(batch_size, -1) * length_penalty[i+2], dim=-1)
+        max_finish = [max([t[0] * length_penalty[t[1].size(0)] for t in finished[j]]) if finished[j] else inf for j in range(batch_size)]
+        max_finish = torch.stack(max_finish)
+        if torch.sum(max_finish < max_score) == 0:
             break
 
-    return [b.best_hypothesis for b in beams]
+    result = []
+    for j in range(batch_size):
+        if not finished[j]:
+            result.append(b.hypotheses[0, 1:])
+        else:
+            candidate = sorted(finished[j], key=lambda t: t[0] * length_penalty[t[1].size(0)], reverse=True)
+            result.append(candidate[0][1])
+    return result
 
