@@ -62,7 +62,7 @@ def train(model, optimizer, train_dataset, valid_dataset):
             model.zero_grad()
 
             if optimizer.n_step % opt.report_every == 0:
-                logger.info("step: %7d\t loss: %7f" % (optimizer.n_step, total_loss / opt.report_every))
+                logger.info("step: %7d\t loss: %7f" % (optimizer.n_step, total_loss / opt.report_every / opt.grad_accum))
                 total_loss = 0.0
 
             if optimizer.n_step % opt.save_every == 0:
