@@ -15,14 +15,14 @@ class Saver(object):
         elif not os.path.exists(save_path):
             os.mkdir(save_path)
 
-    def save(self, save_dict, step, bleu):
+    def save(self, save_dict, step, bleu, loss):
         filename = "checkpoint-step-%06d" % step
         full_filename = os.path.join(self.save_path, filename)
         self.ckpt_names.append(full_filename)
         torch.save(save_dict, full_filename)
 
         with open(os.path.join(self.save_path, "log"), "a", encoding="UTF-8") as log:
-            log.write("%s\t step: %6d\t bleu: %.2f\n" % (datetime.datetime.now(), step, bleu))
+            log.write("%s\t step: %6d\t loss: %.2f\t bleu: %.2f\n" % (datetime.datetime.now(), step, loss, bleu))
 
         if 0 < self.max_to_keep < len(self.ckpt_names):
             earliest_ckpt = self.ckpt_names.pop(0)

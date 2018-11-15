@@ -46,7 +46,7 @@ def valid(model, valid_dataset):
 
     bleu = calculate_bleu(hypothesis, references)
     logger.info("Valid loss: %.2f\tValid Beam BLEU: %3.2f" % (total_loss / total, bleu))
-    return bleu
+    return total_loss / total, bleu
 
 
 def train(model, optimizer, train_dataset, valid_dataset):
@@ -67,11 +67,11 @@ def train(model, optimizer, train_dataset, valid_dataset):
 
             if optimizer.n_step % opt.save_every == 0:
                 with torch.set_grad_enabled(False):
-                    valid_bleu = valid(model, valid_dataset)
+                    valid_loss, valid_bleu = valid(model, valid_dataset)
                     checkpoint = {"model": model.module.model.state_dict(),
                                   "opt": opt,
                                   "optimizer": optimizer.optimizer.state_dict()}
-                    saver.save(checkpoint, optimizer.n_step, valid_bleu)
+                    saver.save(checkpoint, optimizer.n_step, valid_bleu, valid_loss)
                 model.train()
         del loss
 
