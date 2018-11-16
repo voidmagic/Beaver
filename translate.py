@@ -3,9 +3,10 @@
 import argparse
 
 import torch
+import torch.nn as nn
 
 from beaver.data import build_dataset
-from beaver.infer import beam_search
+from beaver.infer import Translator
 from beaver.model import NMTModel
 from beaver.utils import parseopt, get_device, get_logger, calculate_bleu, Loader
 
@@ -27,8 +28,10 @@ def translate(dataset, fields, model):
     total_sents = len(dataset.examples)
     already, hypothesis, references = 0, [], []
 
+    translator = nn.DataParallel(Translator(opt, model, fields)).to(device)
+
     for batch in dataset:
-        predictions = beam_search(opt, model, batch, fields, device)
+        predictions = translator(batch.src)
         hypothesis += [fields["tgt"].decode(p) for p in predictions]
         references += [fields["tgt"].decode(t) for t in batch.tgt]
         already += len(predictions)
