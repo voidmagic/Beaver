@@ -34,7 +34,7 @@ def valid(model, valid_dataset):
     total_loss, total = 0.0, 0
 
     hypothesis, references = [], []
-    translator = Translator(opt, model, valid_dataset.fields)
+    translator = Translator(opt, model.module.model, valid_dataset.fields)
 
     for batch in valid_dataset:
         loss = model(batch.src, batch.tgt).sum()
