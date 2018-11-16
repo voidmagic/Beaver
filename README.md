@@ -10,7 +10,7 @@ The design goal is to become a friend **start point** for NMT researchers.
 ## Features:
 * **Simple**: the codebase is very concise(less than 1k lines of python code).
 * **Complete**: beaver includes a **complete** pipeline from preprocess to translation, and most of the preprocess tools are borrowed from [moses](https://github.com/moses-smt/mosesdecoder) to guarantee standardization.
-* **Efficient**: beaver is faster than most of current open source NMT systems. The full comparision is coming soon and we welcome contributions.
+* **Efficient**: beaver is faster than most of current open source NMT systems. Multi GPU training and inference are already supported.
 * **Modularized**: beaver includes 4 main modules(data, infer, loss and model) and a utility module(utils).
 
 
@@ -177,7 +177,7 @@ The full parameters can be found in `beaver/utils/parseopt.py`
 ## TODOs:
 
 1. More hyper-parameters should be exposed.
-2. Model saving and loading logic.
+2. Comparision with existing open source projects. 
 
 ## References:
 * [Attention is all you need](http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf).
