@@ -35,7 +35,7 @@ def beam_search(opt, model, batch, fields, device):
     finish_scores = torch.full([batch_size, beam_size], -1e20).float()
 
     beam_index_expander = torch.arange(batch_size).unsqueeze(1) * beam_size
-    length_penalty = (6 / (5 + torch.arange(opt.max_length).float())) ** opt.length_penalty
+    length_penalty = (6 / (5 + torch.arange(opt.max_length+2).float())) ** opt.length_penalty
     inf = torch.tensor(-1e20).float().to(device)
 
     alive_hypotheses = alive_hypotheses.to(device)
