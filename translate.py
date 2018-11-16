@@ -37,6 +37,9 @@ def translate(dataset, fields, model):
         already += len(predictions)
         logger.info("Translated: %7d/%7d" % (already, total_sents))
 
+    origin = sorted(zip(hypothesis, references, dataset.seed), key=lambda t: t[2])
+    hypothesis = [o[0] for o in origin]
+    references = [o[1] for o in origin]
     with open(opt.output, "w", encoding="UTF-8") as out_file:
         out_file.write("\n".join(hypothesis))
 

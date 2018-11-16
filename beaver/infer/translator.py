@@ -109,7 +109,6 @@ class Translator(nn.Module):
         return tensor
 
     def pack_result(self, result):
-        max_length = max([r.size(0) for r in result])
         for r in result:
-            pad_len = max_length - r.size(0)
+            pad_len = self.max_length - r.size(0)
             yield r if pad_len == 0 else torch.cat([r, self.pad_tensor.repeat(pad_len)], dim=0)

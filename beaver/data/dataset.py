@@ -16,11 +16,11 @@ class TranslationDataset(object):
         self.fields = fields
         self.sort_key = lambda ex: (len(ex.src), len(ex.tgt))
 
-        self.examples = []
+        examples = []
         for src_line, tgt_line in zip(read_file(src_path), read_file(tgt_path)):
-            self.examples.append(Example(src_line, tgt_line))
+            examples.append(Example(src_line, tgt_line))
 
-        self.examples = sorted(self.examples, key=self.sort_key) if train else self.examples
+        self.examples, self.seed = self.sort(examples)
         self.batches = list(batch(self.examples, self.batch_size))
 
     def __iter__(self):
@@ -34,6 +34,10 @@ class TranslationDataset(object):
                 random.shuffle(self.batches)
             else:
                 break
+
+    def sort(self, examples):
+        seed = sorted(range(len(examples)), key=lambda idx: self.sort_key(examples[idx]))
+        return sorted(examples, key=self.sort_key), seed
 
 
 def read_file(path):
