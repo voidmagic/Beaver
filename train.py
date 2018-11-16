@@ -7,7 +7,7 @@ import torch.cuda
 import torch.nn as nn
 
 from beaver.data import build_dataset
-from beaver.infer import beam_search
+from beaver.infer import Translator
 from beaver.loss import WarmAdam, LabelSmoothingLoss
 from beaver.model import NMTModel, FullModel
 from beaver.utils import Saver, Loader
@@ -34,13 +34,14 @@ def valid(model, valid_dataset):
     total_loss, total = 0.0, 0
 
     hypothesis, references = [], []
+    translator = Translator(opt, model, valid_dataset.fields)
 
     for batch in valid_dataset:
         loss = model(batch.src, batch.tgt).sum()
         total_loss += loss.data
         total += 1
 
-        predictions = beam_search(opt, model.module.model, batch, valid_dataset.fields, device)
+        predictions = translator(batch.src)
         hypothesis += [valid_dataset.fields["tgt"].decode(p) for p in predictions]
         references += [valid_dataset.fields["tgt"].decode(t) for t in batch.tgt]
 
