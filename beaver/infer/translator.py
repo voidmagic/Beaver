@@ -96,7 +96,7 @@ class Translator(nn.Module):
         result = []
         for j in range(batch_size):
             if not finished[j]:
-                result.append(alive_hypotheses[j, 0, 1:])
+                result.append(alive_hypotheses.view(batch_size, self.beam_size, -1)[j, 0, 1:])
             else:
                 candidate = sorted(finished[j], key=lambda t: t[0] * self.length_penalty[t[1].size(0)], reverse=True)
                 result.append(candidate[0][1])
