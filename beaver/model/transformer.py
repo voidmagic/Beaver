@@ -170,9 +170,7 @@ class MultiHeadedAttention(nn.Module):
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.linear_keys = nn.Linear(model_dim, head_count * self.dim_per_head)
-        self.linear_values = nn.Linear(model_dim, head_count * self.dim_per_head)
-        self.linear_query = nn.Linear(model_dim, head_count * self.dim_per_head)
+        self.projects = nn.ModuleList([nn.Linear(model_dim, head_count * self.dim_per_head) for _ in range(6)])
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
@@ -180,14 +178,11 @@ class MultiHeadedAttention(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.linear_keys.weight)
-        nn.init.xavier_uniform_(self.linear_query.weight)
-        nn.init.xavier_uniform_(self.linear_values.weight)
-        nn.init.xavier_uniform_(self.final_linear.weight)
-        nn.init.constant_(self.linear_keys.bias, 0.)
-        nn.init.constant_(self.linear_query.bias, 0.)
-        nn.init.constant_(self.linear_values.bias, 0.)
+        for i in range(6):
+            nn.init.xavier_uniform_(self.projects[i].weight)
+            nn.init.constant_(self.projects[i].bias, 0.)
         nn.init.constant_(self.final_linear.bias, 0.)
+        nn.init.xavier_uniform_(self.final_linear.weight)
 
     def forward(self, query, memory=None, mask=None):
         memory = query if memory is None else memory
@@ -195,16 +190,21 @@ class MultiHeadedAttention(nn.Module):
         dim_per_head = self.dim_per_head
         head_count = self.head_count
 
-        def shape(x):
+        def split_head(x):
             return x.view(batch_size, -1, head_count, dim_per_head).transpose(1, 2)
 
-        def unshape(x):
+        def combine_head(x):
             return x.transpose(1, 2).contiguous().view(batch_size, -1, head_count * dim_per_head)
 
         # 1) Project key, value, and query.
-        key_up = shape(self.linear_keys(memory))
-        value_up = shape(self.linear_values(memory))
-        query_up = shape(self.linear_query(query))
+        if memory is None:
+            key_up = split_head(self.projects[0](memory))
+            value_up = split_head(self.projects[1](memory))
+            query_up = split_head(self.projects[2](query))
+        else:
+            key_up = split_head(self.projects[3](memory))
+            value_up = split_head(self.projects[4](memory))
+            query_up = split_head(self.projects[5](query))
 
         # 2) Calculate and scale scores.
         query_up = query_up / math.sqrt(dim_per_head)
@@ -212,12 +212,12 @@ class MultiHeadedAttention(nn.Module):
 
         if mask is not None:
             mask = mask.unsqueeze(1).expand_as(scores)
-            scores = scores.masked_fill(mask, -1e18)
+            scores = scores.masked_fill(mask, -1e20)
 
         # 3) Apply attention dropout and compute context vectors.
         attn = self.softmax(scores)
         drop_attn = self.dropout(attn)
-        context = unshape(torch.matmul(drop_attn, value_up))
+        context = combine_head(torch.matmul(drop_attn, value_up))
 
         output = self.final_linear(context)
 
