@@ -170,7 +170,7 @@ class MultiHeadedAttention(nn.Module):
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.projects = nn.ModuleList([nn.Linear(model_dim, head_count * self.dim_per_head) for _ in range(6)])
+        self.projects = nn.ModuleList([nn.Linear(model_dim, model_dim) for _ in range(6)])
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
@@ -185,21 +185,20 @@ class MultiHeadedAttention(nn.Module):
         nn.init.xavier_uniform_(self.final_linear.weight)
 
     def forward(self, query, memory=None, mask=None):
-        memory = query if memory is None else memory
         batch_size = memory.size(0)
         dim_per_head = self.dim_per_head
         head_count = self.head_count
 
         def split_head(x):
-            return x.view(batch_size, -1, head_count, dim_per_head).transpose(1, 2)
+            return x.view(batch_size, -1, head_count, dim_per_head).transpose(1, 2).contiguous()
 
         def combine_head(x):
             return x.transpose(1, 2).contiguous().view(batch_size, -1, head_count * dim_per_head)
 
         # 1) Project key, value, and query.
         if memory is None:
-            key_up = split_head(self.projects[0](memory))
-            value_up = split_head(self.projects[1](memory))
+            key_up = split_head(self.projects[0](query))
+            value_up = split_head(self.projects[1](query))
             query_up = split_head(self.projects[2](query))
         else:
             key_up = split_head(self.projects[3](memory))
