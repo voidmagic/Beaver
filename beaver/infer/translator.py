@@ -22,8 +22,6 @@ class Translator(nn.Module):
         self.decoder = model.decoder
         self.generator = model.generator
 
-        self.eval()
-
     def forward(self, src):
         batch_size = src.size(0)
         device = src.device
