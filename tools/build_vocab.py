@@ -17,7 +17,7 @@ def main():
     appear = sum([c for _, c in items[:size]])
     log("total words: %d\n" % total)
     log("words in vocab: %d\n" % appear)
-    log("vocab coverage: %.2f%%\n" % (appear / total * 100))
+    log("vocab coverage: %.2f%%\n" % (1.0 * appear / total * 100))
     log("total unique words: %d\n" % len(items))
 
 
