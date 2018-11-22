@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from beaver.data import build_dataset
-from beaver.infer import Translator
+from beaver.infer import beam_search
 from beaver.model import NMTModel
 from beaver.utils import parseopt, get_device, get_logger, calculate_bleu, Loader
 
@@ -28,10 +28,8 @@ def translate(dataset, fields, model):
     total_sents = len(dataset.examples)
     already, hypothesis, references = 0, [], []
 
-    translator = nn.DataParallel(Translator(opt, model, fields)).to(device)
-
     for batch in dataset:
-        predictions = translator(batch.src)
+        predictions = beam_search(opt, model, batch, fields, device)
         hypothesis += [fields["tgt"].decode(p) for p in predictions]
         references += [fields["tgt"].decode(t) for t in batch.tgt]
         already += len(predictions)
@@ -51,7 +49,7 @@ def main():
     dataset = build_dataset(opt, opt.trans, opt.vocab, device, train=False)
 
     logger.info("Build model...")
-    model = NMTModel.load_model(loader, dataset.fields).eval().to(device)
+    model = NMTModel.load_model(loader, dataset.fields).eval()
 
     logger.info("Start translation...")
     with torch.set_grad_enabled(False):
