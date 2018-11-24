@@ -7,7 +7,7 @@ import torch.optim as optim
 
 
 class WarmAdam(object):
-    def __init__(self, params, lr, hidden_size, warm_up, init_step, init_ckpt, device):
+    def __init__(self, params, lr, hidden_size, warm_up, init_step, init_ckpt):
         self.original_lr = lr
         self.n_step = init_step
         self.hidden_size = hidden_size
@@ -16,10 +16,6 @@ class WarmAdam(object):
 
         if init_ckpt:
             self.optimizer.load_state_dict(init_ckpt["optimizer"])
-            for state in self.optimizer.state.values():
-                for k, v in state.items():
-                    if isinstance(v, torch.Tensor):
-                        state[k] = v.to(device)
 
     def step(self):
         self.n_step += 1

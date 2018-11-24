@@ -85,9 +85,11 @@ def main():
 
     model = NMTModel.load_model(loader, fields)
     criterion = LabelSmoothingLoss(opt.label_smoothing, len(fields["tgt"].vocab), fields["tgt"].pad_id)
-    optimizer = WarmAdam(model.parameters(), opt.lr, opt.hidden_size, opt.warm_up, loader.step, loader.checkpoint, device)
-
     model = nn.DataParallel(FullModel(model, criterion)).to(device)
+
+    optimizer = WarmAdam(model.module.model.parameters(),
+                         opt.lr, opt.hidden_size, opt.warm_up,
+                         loader.step, loader.checkpoint)
 
     logger.info("start training...")
     train(model, optimizer, train_dataset, valid_dataset)
