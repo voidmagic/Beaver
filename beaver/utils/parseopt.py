@@ -32,6 +32,9 @@ def model_opts(parser):
     parser.add_argument("-label_smoothing", type=float, default=0.1, help="Label smoothing rate")
     parser.add_argument("-dropout", type=float, default=0.1, help="Dropout rate")
 
+    parser.add_argument("-betas", type=float, nargs=2, default=[0.9, 0.98], help="Adam beta")
+    parser.add_argument("-eps", type=float, default=1e-9, help="Adam eps")
+
 
 def translate_opts(parser):
     parser.add_argument("-trans", type=str, nargs=2, help="Translation data")

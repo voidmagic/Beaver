@@ -85,4 +85,4 @@ class FullModel(nn.Module):
     def forward(self, src, tgt):
         scores = self.model(src, tgt)
         loss = self.criterion(scores, tgt[:, 1:].contiguous().view(-1))
-        return loss.unsqueeze(0) / tgt.ne(self.model.decoder.embedding.word_padding_idx).float().sum()
+        return loss.unsqueeze(0)

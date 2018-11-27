@@ -36,7 +36,7 @@ def valid(model, valid_dataset):
     hypothesis, references = [], []
 
     for batch in valid_dataset:
-        loss = model(batch.src, batch.tgt).sum()
+        loss = model(batch.src, batch.tgt).mean()
         total_loss += loss.data
         total += 1
 
@@ -53,7 +53,7 @@ def train(model, optimizer, train_dataset, valid_dataset):
     total_loss = 0.0
     model.zero_grad()
     for i, batch in enumerate(train_dataset):
-        loss = model(batch.src, batch.tgt).sum()
+        loss = model(batch.src, batch.tgt).mean()
         loss.backward()
         total_loss += loss.data
 
@@ -88,7 +88,7 @@ def main():
     model = nn.DataParallel(FullModel(model, criterion)).to(device)
 
     optimizer = WarmAdam(model.module.model.parameters(),
-                         opt.lr, opt.hidden_size, opt.warm_up,
+                         opt.lr, opt.betas, opt.eps, opt.hidden_size, opt.warm_up,
                          loader.step, loader.checkpoint)
 
     logger.info("start training...")

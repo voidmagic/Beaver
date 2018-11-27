@@ -2,17 +2,16 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as func
 import torch.optim as optim
 
 
 class WarmAdam(object):
-    def __init__(self, params, lr, hidden_size, warm_up, init_step, init_ckpt):
+    def __init__(self, params, lr, betas, eps, hidden_size, warm_up, init_step, init_ckpt):
         self.original_lr = lr
         self.n_step = init_step
         self.hidden_size = hidden_size
         self.warm_up_step = warm_up
-        self.optimizer = optim.Adam(params, betas=[0.9, 0.997], eps=1e-9)
+        self.optimizer = optim.Adam(params, betas=betas, eps=eps)
 
         if init_ckpt:
             self.optimizer.load_state_dict(init_ckpt["optimizer"])
@@ -27,11 +26,6 @@ class WarmAdam(object):
 
 
 class LabelSmoothingLoss(nn.Module):
-    """
-    With label smoothing,
-    KL-divergence between q_{smoothed ground truth prob.}(w)
-    and p_{prob. computed by model}(w) is minimized.
-    """
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index):
         self.padding_idx = ignore_index
         super(LabelSmoothingLoss, self).__init__()
@@ -42,15 +36,13 @@ class LabelSmoothingLoss(nn.Module):
         self.register_buffer('one_hot', one_hot.unsqueeze(0))
 
         self.confidence = 1.0 - label_smoothing
+        self.kl_div = nn.KLDivLoss(reduction='sum')
 
     def forward(self, output, target):
-        """
-        output (FloatTensor): batch_size x n_classes
-        target (LongTensor): batch_size
-        """
+        numel = target.ne(self.padding_idx).float().sum()
         model_prob = self.one_hot.repeat(target.size(0), 1)
         model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
         model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
-
-        return func.kl_div(output, model_prob, reduction='sum')
+        loss = self.kl_div(output, model_prob)
+        return loss / numel
 
