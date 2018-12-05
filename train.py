@@ -7,7 +7,7 @@ import torch.cuda
 import torch.nn as nn
 
 from beaver.data import build_dataset
-from beaver.infer import beam_search
+from beaver.infer import parallel_beam_search
 from beaver.loss import WarmAdam, LabelSmoothingLoss
 from beaver.model import NMTModel, FullModel
 from beaver.utils import Saver, Loader
@@ -40,7 +40,7 @@ def valid(model, valid_dataset):
         total_loss += loss.data
         total += 1
 
-        predictions = beam_search(opt, model.module.model, batch, valid_dataset.fields, device)
+        predictions = parallel_beam_search(opt, model.module.model, batch, valid_dataset.fields)
         hypothesis += [valid_dataset.fields["tgt"].decode(p) for p in predictions]
         references += [valid_dataset.fields["tgt"].decode(t) for t in batch.tgt]
 

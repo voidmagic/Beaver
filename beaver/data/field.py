@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from collections import Counter
-
 import torch
 
 EOS_TOKEN = "<eos>"

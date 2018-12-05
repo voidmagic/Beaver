@@ -1,30 +1,38 @@
 # -*- coding: utf-8 -*-
+import threading
+
 import torch
-import torch.nn as nn
+from torch.nn.parallel import replicate
+from torch.nn.parallel.scatter_gather import scatter
+
 from beaver.infer.beam import Beam
 
 
-def beam_search(opt, model, batch, fields, device):
-    batch_size = batch.batch_size
+def beam_search(opt, model, src, fields, device_idx=0, results=None, lock=None):
+    batch_size = src.size(0)
     beam_size = opt.beam_size
+    device = src.device
     num_words = model.generator.vocab_size
 
-    encoder = nn.DataParallel(model.encoder).to(device)
-    decoder = nn.DataParallel(model.decoder).to(device)
-    generator = nn.DataParallel(model.generator).to(device)
+    encoder = model.encoder
+    decoder = model.decoder
+    generator = model.generator
 
     beams = [Beam(opt.beam_size, fields["tgt"].pad_id, fields["tgt"].bos_id, fields["tgt"].eos_id,
                   device, opt.length_penalty) for _ in range(batch_size)]
 
-    src = batch.src.repeat(1, beam_size).view(batch_size*beam_size, -1)
+    src = src.repeat(1, beam_size).view(batch_size*beam_size, -1)
     src_pad = src.eq(fields["src"].pad_id)
     src_out = encoder(src, src_pad)
+
+    src_length = src.size(1)
 
     beam_expander = (torch.arange(batch_size) * beam_size).view(-1, 1).to(device)
 
     previous = None
+    max_len = max(int(opt.max_length_ratio * src_length), 10)
 
-    for i in range(opt.max_length):
+    for i in range(max_len):
         if all((b.done for b in beams)):
             break
 
@@ -37,7 +45,6 @@ def beam_search(opt, model, batch, fields, device):
 
         # find topk candidates
         scores, indexes = (out + previous_score).view(batch_size, -1).topk(beam_size)
-        del out
 
         # find origins and token
         origins = (indexes.view(-1) // num_words).view(batch_size, beam_size)
@@ -49,4 +56,32 @@ def beam_search(opt, model, batch, fields, device):
         origins = (origins + beam_expander).view(-1)
         previous = torch.index_select(previous, 0, origins)
 
-    return [b.best_hypothesis for b in beams]
+    with lock:
+        results[device_idx] = [b.best_hypothesis for b in beams]
+
+
+def parallel_beam_search(opt, model, batch, fields):
+    lock = threading.Lock()
+    device_ids = list(range(torch.cuda.device_count()))
+    if len(device_ids) == 1:
+        return beam_search(opt, model, batch.batch_size, batch.src, fields)
+
+    # 1. scatter input
+    sources = scatter(batch.src, device_ids)
+    targets = scatter(batch.tgt, device_ids)
+
+    # 2. replicate model
+    replicas = replicate(model, device_ids[:len(sources)])
+    assert len(replicas) == len(sources) == len(targets)
+
+    # 3. parallel apply
+    results = {}
+
+    threads = [threading.Thread(target=beam_search, args=(opt, model, src, fields, idx, results, lock))
+               for idx, (model, src, tgt) in enumerate(zip(replicas, sources, targets))]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    return [h for i in range(len(replicas)) for h in results[i]]

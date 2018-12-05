@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import torch
 import torch.nn as nn
+
 from beaver.model.embeddings import Embedding
 from beaver.model.transformer import Decoder, Encoder
 

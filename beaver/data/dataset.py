@@ -47,12 +47,12 @@ def read_file(path):
 
 
 def batch(data, batch_size):
-    max_tgt_len = 0
+    max_len = 0
 
     def batch_size_fn(example, count, size):
-        nonlocal max_tgt_len
-        max_tgt_len = max(max_tgt_len, len(example.tgt))
-        return max_tgt_len * count
+        nonlocal max_len
+        max_len = max(max_len, len(example.src), len(example.tgt))
+        return max_len * count
 
     minibatch, size_so_far = [], 0
     for ex in data:
@@ -60,8 +60,7 @@ def batch(data, batch_size):
         size_so_far = batch_size_fn(ex, len(minibatch), size_so_far)
         if size_so_far > batch_size:
             yield minibatch[:-1]
-            max_src_len, max_tgt_len = 0, 0
-            minibatch, size_so_far = [ex], batch_size_fn(ex, 1, 0)
+            minibatch, size_so_far, max_len = [ex], batch_size_fn(ex, 1, 0), 0
     if minibatch:
         yield minibatch
 
