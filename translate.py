@@ -39,6 +39,7 @@ def translate(dataset, fields, model):
     references = [o[1] for o in origin]
     with open(opt.output, "w", encoding="UTF-8") as out_file:
         out_file.write("\n".join(hypothesis))
+        out_file.write("\n")
 
     logger.info("Translation finished. BLEU: %.2f." % calculate_bleu(hypothesis, references))
 
