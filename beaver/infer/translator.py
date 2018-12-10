@@ -64,7 +64,7 @@ def parallel_beam_search(opt, model, batch, fields):
     lock = threading.Lock()
     device_ids = list(range(torch.cuda.device_count()))
     if len(device_ids) == 1:
-        return beam_search(opt, model, batch.batch_size, batch.src, fields)
+        return beam_search(opt, model, batch.src, fields)
 
     # 1. scatter input
     sources = scatter(batch.src, device_ids)
