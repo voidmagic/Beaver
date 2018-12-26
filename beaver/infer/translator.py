@@ -8,7 +8,7 @@ from torch.nn.parallel.scatter_gather import scatter
 from beaver.infer.beam import Beam
 
 
-def beam_search(opt, model, src, fields, device_idx=0, results=None, lock=None):
+def beam_search(opt, model, src, fields, device_idx=0, results=None):
     batch_size = src.size(0)
     beam_size = opt.beam_size
     device = src.device
@@ -56,15 +56,16 @@ def beam_search(opt, model, src, fields, device_idx=0, results=None, lock=None):
         origins = (origins + beam_expander).view(-1)
         previous = torch.index_select(previous, 0, origins)
 
-    with lock:
-        results[device_idx] = [b.best_hypothesis for b in beams]
+    results[device_idx] = [b.best_hypothesis for b in beams]
 
 
 def parallel_beam_search(opt, model, batch, fields):
-    lock = threading.Lock()
     device_ids = list(range(torch.cuda.device_count()))
-    if len(device_ids) == 1:
-        return beam_search(opt, model, batch.src, fields)
+    results = {}
+
+    if len(device_ids) <= 1:
+        beam_search(opt, model, batch.src, fields, results=results)
+        return results[0]
 
     # 1. scatter input
     sources = scatter(batch.src, device_ids)
@@ -75,10 +76,9 @@ def parallel_beam_search(opt, model, batch, fields):
     assert len(replicas) == len(sources) == len(targets)
 
     # 3. parallel apply
-    results = {}
+    threads = [threading.Thread(target=beam_search, args=(opt, model, src, fields, idx, results))
+               for idx, (model, src) in enumerate(zip(replicas, sources))]
 
-    threads = [threading.Thread(target=beam_search, args=(opt, model, src, fields, idx, results, lock))
-               for idx, (model, src, tgt) in enumerate(zip(replicas, sources, targets))]
     for thread in threads:
         thread.start()
     for thread in threads:
