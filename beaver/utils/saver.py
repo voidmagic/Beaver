@@ -7,7 +7,7 @@ import datetime
 class Saver(object):
     def __init__(self, save_path, max_to_keep, logger):
         self.ckpt_names = []
-        self.save_path = save_path + datetime.datetime.now().strftime("-%y%m%d-%H%M")
+        self.save_path = save_path + datetime.datetime.now().strftime("-%y%m%d-%H%M%S")
         self.max_to_keep = max_to_keep
         if os.path.exists(self.save_path) and not os.path.isdir(self.save_path):
             logger.info("%s is not a valid path" % self.save_path)
