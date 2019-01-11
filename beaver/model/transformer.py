@@ -31,19 +31,6 @@ class PositionWiseFeedForward(nn.Module):
         return y
 
 
-class LayerProcess(nn.Module):
-    def __init__(self, hidden_dim, mode="none"):
-        super(LayerProcess, self).__init__()
-        self.mode = mode
-        self.layer_norm = nn.LayerNorm(hidden_dim)
-
-    def forward(self, x):
-        if self.mode == "layer_norm":
-            return x
-        else:
-            return self.layer_norm(x)
-
-
 class EncoderLayer(nn.Module):
 
     def __init__(self, hidden_size, dropout, head_count, ff_size):
@@ -52,21 +39,18 @@ class EncoderLayer(nn.Module):
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
         self.feed_forward = PositionWiseFeedForward(hidden_size, ff_size, dropout)
         self.dropout = nn.Dropout(dropout)
-        self.layer_preprocess = nn.ModuleList([LayerProcess(hidden_size, "none") for _ in range(2)])
-        self.layer_postprocess = nn.ModuleList([LayerProcess(hidden_size, "layer_norm") for _ in range(2)])
+        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
 
     def forward(self, layer_input, mask):
         x = layer_input
 
         # self attention
-        y = self.self_attn(self.layer_preprocess[0](x), mask=mask)
+        y = self.self_attn(self.norm[0](x), mask=mask)
         x = x + self.dropout(y)
-        x = self.layer_postprocess[0](x)
 
         # feed forward
-        y = self.feed_forward(self.layer_preprocess[1](x))
+        y = self.feed_forward(self.norm[1](x))
         x = x + self.dropout(y)
-        x = self.layer_postprocess[1](x)
         return x
 
 
@@ -99,28 +83,23 @@ class DecoderLayer(nn.Module):
         self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
         self.feed_forward = PositionWiseFeedForward(hidden_size, ff_size, dropout)
         self.dropout = nn.Dropout(dropout)
-
-        self.layer_preprocess = nn.ModuleList([LayerProcess(hidden_size, "none") for _ in range(3)])
-        self.layer_postprocess = nn.ModuleList([LayerProcess(hidden_size, "layer_norm") for _ in range(3)])
+        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(3)])
 
     def forward(self, layer_input, enc_out, src_mask, tgt_mask, previous_input=None):
         all_input = layer_input if previous_input is None else torch.cat((previous_input, layer_input), dim=1)
         x = layer_input
 
         # self attention
-        y = self.self_attn(self.layer_preprocess[0](x), self.layer_preprocess[0](all_input), tgt_mask)
+        y = self.self_attn(self.norm[0](x), self.layer_preprocess[0](all_input), tgt_mask)
         x = x + self.dropout(y)
-        x = self.layer_postprocess[0](x)
 
         # encoder decoder attention
-        y = self.src_attn(self.layer_preprocess[1](x), enc_out, src_mask)
+        y = self.src_attn(self.norm[1](x), enc_out, src_mask)
         x = x + self.dropout(y)
-        x = self.layer_postprocess[1](x)
 
         # feed forward
-        y = self.feed_forward(self.layer_preprocess[2](x))
+        y = self.feed_forward(self.norm[2](x))
         x = x + self.dropout(y)
-        x = self.layer_postprocess[2](x)
         return x, all_input
 
 
