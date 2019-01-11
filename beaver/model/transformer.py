@@ -41,8 +41,7 @@ class EncoderLayer(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
 
-    def forward(self, layer_input, mask):
-        x = layer_input
+    def forward(self, x, mask):
 
         # self attention
         y = self.self_attn(self.norm[0](x), mask=mask)
@@ -82,15 +81,14 @@ class DecoderLayer(nn.Module):
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
         self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
         self.feed_forward = PositionWiseFeedForward(hidden_size, ff_size, dropout)
-        self.dropout = nn.Dropout(dropout)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(3)])
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, layer_input, enc_out, src_mask, tgt_mask, previous_input=None):
-        all_input = layer_input if previous_input is None else torch.cat((previous_input, layer_input), dim=1)
-        x = layer_input
+    def forward(self, x, enc_out, src_mask, tgt_mask, previous=None):
+        all_input = x if previous is None else torch.cat((previous, x), dim=1)
 
         # self attention
-        y = self.self_attn(self.norm[0](x), self.layer_preprocess[0](all_input), tgt_mask)
+        y = self.self_attn(self.norm[0](x), self.norm[0](all_input), tgt_mask)
         x = x + self.dropout(y)
 
         # encoder decoder attention
