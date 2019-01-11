@@ -9,11 +9,11 @@ class Saver(object):
         self.ckpt_names = []
         self.save_path = save_path + datetime.datetime.now().strftime("-%y%m%d-%H%M")
         self.max_to_keep = max_to_keep
-        if os.path.exists(save_path) and not os.path.isdir(save_path):
-            logger.info("%s is not a valid path" % save_path)
+        if os.path.exists(self.save_path) and not os.path.isdir(self.save_path):
+            logger.info("%s is not a valid path" % self.save_path)
             exit()
-        elif not os.path.exists(save_path):
-            os.mkdir(save_path)
+        elif not os.path.exists(self.save_path):
+            os.mkdir(self.save_path)
 
     def save(self, save_dict, step, bleu, loss):
         filename = "checkpoint-step-%06d" % step
