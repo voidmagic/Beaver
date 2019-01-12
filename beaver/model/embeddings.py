@@ -37,8 +37,7 @@ class Embedding(nn.Module):
         return self.word_padding_idx
 
     def forward(self, x, timestep=0):
-        embedding = self.embedding(x) * math.sqrt(self.embedding_dim) + self.pe[timestep:timestep + x.size(1)]
-        embedding = embedding * self.embedding_dim ** 0.5
+        embedding = self.embedding(x) * (self.embedding_dim ** 0.5) + self.pe[timestep:timestep + x.size(1)]
         return self.dropout(embedding)
 
     @classmethod
