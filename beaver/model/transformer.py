@@ -61,13 +61,14 @@ class Encoder(nn.Module):
 
         self.embedding = embedding
         self.layers = nn.ModuleList([EncoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
+        self.norm = nn.LayerNorm(hidden_size)
 
     def forward(self, src, src_pad):
         src_mask = src_pad.unsqueeze(1).repeat(1, src.size(1), 1)
         output = self.embedding(src)
         for i in range(self.num_layers):
             output = self.layers[i](output, src_mask)
-        return output
+        return self.norm(output)
 
 
 class DecoderLayer(nn.Module):
@@ -108,6 +109,7 @@ class Decoder(nn.Module):
         self.embedding = embedding
         self.layers = nn.ModuleList([DecoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
         self.register_buffer(tensor=upper_triangle, name="upper_triangle")
+        self.norm = nn.LayerNorm(hidden_size)
 
     def forward(self, tgt, enc_out, src_pad, tgt_pad, previous=None, timestep=0):
 
@@ -127,7 +129,7 @@ class Decoder(nn.Module):
 
             output, all_input = self.layers[i](output, enc_out, src_mask, tgt_mask, prev_layer)
             saved_inputs.append(all_input)
-        return output, torch.stack(saved_inputs, dim=1)
+        return self.norm(output), torch.stack(saved_inputs, dim=1)
 
 
 class MultiHeadedAttention(nn.Module):

@@ -12,7 +12,7 @@ def train_opts(parser):
     parser.add_argument("-grad_accum", type=int, default=1, help="Accumulate gradients")
     parser.add_argument("-batch_size", type=int, default=8192, help="Batch size")
     parser.add_argument("-max_to_keep", type=int, default=5, help="How many checkpoints to keep")
-    parser.add_argument("-report_every", type=int, default=1000, help="Report every n steps")
+    parser.add_argument("-report_every", type=int, default=100, help="Report every n steps")
     parser.add_argument("-save_every", type=int, default=2000, help="Valid and save model for every n steps")
 
     # for validation
