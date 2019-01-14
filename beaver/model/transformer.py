@@ -44,12 +44,12 @@ class EncoderLayer(nn.Module):
     def forward(self, x, mask):
 
         # self attention
-        y = self.self_attn(x, mask=mask)
-        x = self.norm[0](x + self.dropout(y))
+        y = self.self_attn(self.norm[0](x), mask=mask)
+        x = x + self.dropout(y)
 
         # feed forward
         y = self.feed_forward(self.norm[1](x))
-        x = self.norm[1](x + self.dropout(y))
+        x = x + self.dropout(y)
         return x
 
 
@@ -84,16 +84,16 @@ class DecoderLayer(nn.Module):
         all_input = x if previous is None else torch.cat((previous, x), dim=1)
 
         # self attention
-        y = self.self_attn(x, all_input, tgt_mask)
-        x = self.norm[0](x + self.dropout(y))
+        y = self.self_attn(self.norm[0](x), self.norm[0](all_input), tgt_mask)
+        x = x + self.dropout(y)
 
         # encoder decoder attention
-        y = self.src_attn(x, enc_out, src_mask)
-        x = self.norm[1](x + self.dropout(y))
+        y = self.src_attn(self.norm[1](x), enc_out, src_mask)
+        x = x + self.dropout(y)
 
         # feed forward
-        y = self.feed_forward(x)
-        x = self.norm[2](x + self.dropout(y))
+        y = self.feed_forward( self.norm[2](x))
+        x = x + self.dropout(y)
         return x, all_input
 
 
