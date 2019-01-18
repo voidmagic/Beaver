@@ -113,7 +113,7 @@ class Decoder(nn.Module):
 
         tgt_mask = torch.gt(tgt_mask + upper_triangle, 0)
         saved_inputs = []
-        for layer in self.layers:
+        for i, layer in enumerate(self.layers):
             prev_layer = None if previous is None else previous[:, i]
             tgt_mask = tgt_mask if previous is None else None
 
