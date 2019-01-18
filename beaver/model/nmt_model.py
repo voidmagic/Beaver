@@ -61,14 +61,13 @@ class Generator(nn.Module):
     def __init__(self, hidden_size, tgt_vocab_size):
         self.vocab_size = tgt_vocab_size
         super(Generator, self).__init__()
-        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size)
+        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size, bias=False)
         self.lsm = nn.LogSoftmax(dim=-1)
 
         self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.linear_hidden.weight)
-        nn.init.constant_(self.linear_hidden.bias, 0.)
 
     def forward(self, dec_out):
         score = self.linear_hidden(dec_out)

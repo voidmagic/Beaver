@@ -7,13 +7,13 @@ import torch.nn as nn
 
 
 class FeedForward(nn.Module):
-    def __init__(self, hidden_size, inner_size, dropout=0.1):
+    def __init__(self, hidden_size, inner_size, dropout=0.0):
         super(FeedForward, self).__init__()
         self.w_1 = nn.Linear(hidden_size, inner_size)
         self.w_2 = nn.Linear(inner_size, hidden_size)
         self.dropout_1 = nn.Dropout(dropout)
-        self.relu = nn.ReLU()
         self.dropout_2 = nn.Dropout(dropout)
+        self.relu = nn.ReLU()
 
         self.reset_parameters()
 
@@ -42,14 +42,13 @@ class EncoderLayer(nn.Module):
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
 
     def forward(self, x, mask):
-
         # self attention
-        y = self.self_attn(self.norm[0](x), mask=mask)
-        x = x + self.dropout(y)
+        y = self.self_attn(x, mask=mask)
+        x = self.norm[0](x + self.dropout(y))
 
         # feed forward
-        y = self.feed_forward(self.norm[1](x))
-        x = x + self.dropout(y)
+        y = self.feed_forward(x)
+        x = self.norm[1](x + self.dropout(y))
         return x
 
 
@@ -61,14 +60,13 @@ class Encoder(nn.Module):
 
         self.embedding = embedding
         self.layers = nn.ModuleList([EncoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
-        self.norm = nn.LayerNorm(hidden_size)
 
     def forward(self, src, src_pad):
         src_mask = src_pad.unsqueeze(1).repeat(1, src.size(1), 1)
         output = self.embedding(src)
         for i in range(self.num_layers):
             output = self.layers[i](output, src_mask)
-        return self.norm(output)
+        return output
 
 
 class DecoderLayer(nn.Module):
@@ -85,16 +83,16 @@ class DecoderLayer(nn.Module):
         all_input = x if previous is None else torch.cat((previous, x), dim=1)
 
         # self attention
-        y = self.self_attn(self.norm[0](x), self.norm[0](all_input), tgt_mask)
-        x = x + self.dropout(y)
+        y = self.self_attn(x, all_input, tgt_mask)
+        x = self.norm[0](x + self.dropout(y))
 
         # encoder decoder attention
-        y = self.src_attn(self.norm[1](x), enc_out, src_mask)
-        x = x + self.dropout(y)
+        y = self.src_attn(x, enc_out, src_mask)
+        x = self.norm[1](x + self.dropout(y))
 
         # feed forward
-        y = self.feed_forward( self.norm[2](x))
-        x = x + self.dropout(y)
+        y = self.feed_forward(x)
+        x = self.norm[2](x + self.dropout(y))
         return x, all_input
 
 
@@ -108,8 +106,7 @@ class Decoder(nn.Module):
 
         self.embedding = embedding
         self.layers = nn.ModuleList([DecoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
-        self.register_buffer(tensor=upper_triangle, name="upper_triangle")
-        self.norm = nn.LayerNorm(hidden_size)
+        self.register_buffer("upper_triangle", upper_triangle)
 
     def forward(self, tgt, enc_out, src_pad, tgt_pad, previous=None, timestep=0):
 
@@ -120,8 +117,8 @@ class Decoder(nn.Module):
         tgt_mask = tgt_pad.unsqueeze(1).repeat(1, tgt_len, 1)
         upper_triangle = self.upper_triangle[:tgt_len, :tgt_len]
         # tgt mask: 0 if not upper and not pad, 1 or 2 otherwise
-        tgt_mask = torch.gt(tgt_mask + upper_triangle, 0)
 
+        tgt_mask = torch.gt(tgt_mask + upper_triangle, 0)
         saved_inputs = []
         for i in range(self.num_layers):
             prev_layer = None if previous is None else previous[:, i]
@@ -129,12 +126,12 @@ class Decoder(nn.Module):
 
             output, all_input = self.layers[i](output, enc_out, src_mask, tgt_mask, prev_layer)
             saved_inputs.append(all_input)
-        return self.norm(output), torch.stack(saved_inputs, dim=1)
+        return output, torch.stack(saved_inputs, dim=1)
 
 
 class MultiHeadedAttention(nn.Module):
 
-    def __init__(self, head_count, model_dim, dropout=0.1):
+    def __init__(self, head_count, model_dim, dropout=0.0):
         self.dim_per_head = model_dim // head_count
         self.model_dim = model_dim
         self.head_count = head_count
@@ -191,5 +188,4 @@ class MultiHeadedAttention(nn.Module):
         context = combine_head(torch.matmul(drop_attn, value_up))
 
         output = self.final_linear(context)
-
         return output
