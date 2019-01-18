@@ -69,8 +69,7 @@ def train(model, optimizer, train_dataset, valid_dataset):
                 with torch.set_grad_enabled(False):
                     valid_loss, valid_bleu = valid(model, valid_dataset)
                     checkpoint = {"model": model.module.model.state_dict(),
-                                  "opt": opt,
-                                  "optimizer": optimizer.optimizer.state_dict()}
+                                  "opt": opt}
                     saver.save(checkpoint, optimizer.n_step, valid_bleu, valid_loss)
                 model.train()
         del loss
@@ -87,9 +86,8 @@ def main():
     criterion = LabelSmoothingLoss(opt.label_smoothing, len(fields["tgt"].vocab), fields["tgt"].pad_id)
     model = nn.DataParallel(FullModel(model, criterion)).to(device)
 
-    optimizer = WarmAdam(model.module.model.parameters(),
-                         opt.lr, opt.betas, opt.eps, opt.hidden_size, opt.warm_up,
-                         loader.step, loader.checkpoint)
+    optimizer = WarmAdam(model.module.model.parameters(), opt.lr, opt.betas,
+                         opt.eps, opt.hidden_size, opt.warm_up, loader.step)
 
     logger.info("start training...")
     train(model, optimizer, train_dataset, valid_dataset)

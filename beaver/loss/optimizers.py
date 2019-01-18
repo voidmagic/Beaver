@@ -6,15 +6,12 @@ import torch.optim as optim
 
 
 class WarmAdam(object):
-    def __init__(self, params, lr, betas, eps, hidden_size, warm_up, init_step, init_ckpt):
+    def __init__(self, params, lr, betas, eps, hidden_size, warm_up, init_step):
         self.original_lr = lr
         self.n_step = init_step
         self.hidden_size = hidden_size
         self.warm_up_step = warm_up
         self.optimizer = optim.Adam(params, betas=betas, eps=eps)
-
-        if init_ckpt:
-            self.optimizer.load_state_dict(init_ckpt["optimizer"])
 
     def step(self):
         self.n_step += 1
