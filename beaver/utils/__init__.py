@@ -4,8 +4,8 @@ import logging
 
 import torch.cuda
 
-from .metric import calculate_bleu, file_bleu
-from .saver import Saver, Loader
+from beaver.utils.metric import calculate_bleu, file_bleu
+from beaver.utils.saver import Saver, Loader
 
 
 def get_device():

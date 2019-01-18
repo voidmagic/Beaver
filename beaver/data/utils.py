@@ -8,8 +8,8 @@ def build_dataset(opt, data_path, vocab_path, device, train=True):
     src = data_path[0]
     tgt = data_path[1]
 
-    src_field = Field(eos=True)
-    tgt_field = Field(bos=True, eos=True)
+    src_field = Field(unk=True, pad=True, eos=True)
+    tgt_field = Field(unk=True, pad=True, bos=True, eos=True)
 
     if len(vocab_path) == 1:
         # use shared vocab

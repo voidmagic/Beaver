@@ -1,14 +1,36 @@
 # -*- coding: utf-8 -*-
+from typing import Dict
 
 import torch.nn as nn
 
+from beaver.data.field import Field
+from beaver.loss import LabelSmoothingLoss
 from beaver.model.embeddings import Embedding
 from beaver.model.transformer import Decoder, Encoder
+from beaver.utils import Loader
+
+
+class Generator(nn.Module):
+    def __init__(self, hidden_size: int, tgt_vocab_size: int):
+        self.vocab_size = tgt_vocab_size
+        super(Generator, self).__init__()
+        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size, bias=False)
+        self.lsm = nn.LogSoftmax(dim=-1)
+
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.linear_hidden.weight)
+
+    def forward(self, dec_out):
+        score = self.linear_hidden(dec_out)
+        lsm_score = self.lsm(score)
+        return lsm_score.view(-1, self.vocab_size)
 
 
 class NMTModel(nn.Module):
 
-    def __init__(self, encoder, decoder, generator):
+    def __init__(self, encoder: Encoder, decoder: Decoder, generator: Generator):
         super(NMTModel, self).__init__()
 
         self.encoder = encoder
@@ -25,7 +47,8 @@ class NMTModel(nn.Module):
         return scores
 
     @classmethod
-    def build_model(cls, model_opt, fields):
+    def load_model(cls, loader: Loader, fields: Dict[str, Field]):
+        model_opt = loader.params
         src_embedding = Embedding.make_embedding(model_opt, fields["src"], model_opt.hidden_size)
         if len(model_opt.vocab) == 2:
             tgt_embedding = Embedding.make_embedding(model_opt, fields["tgt"], model_opt.hidden_size)
@@ -47,36 +70,15 @@ class NMTModel(nn.Module):
                           tgt_embedding)
 
         generator = Generator(model_opt.hidden_size, len(fields["tgt"].vocab))
-        return cls(encoder, decoder, generator)
 
-    @classmethod
-    def load_model(cls, loader, fields):
-        model = cls.build_model(loader.params, fields)
+        model = cls(encoder, decoder, generator)
         if not loader.empty:
             model.load_state_dict(loader.checkpoint['model'])
         return model
 
 
-class Generator(nn.Module):
-    def __init__(self, hidden_size, tgt_vocab_size):
-        self.vocab_size = tgt_vocab_size
-        super(Generator, self).__init__()
-        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size, bias=False)
-        self.lsm = nn.LogSoftmax(dim=-1)
-
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        nn.init.xavier_uniform_(self.linear_hidden.weight)
-
-    def forward(self, dec_out):
-        score = self.linear_hidden(dec_out)
-        lsm_score = self.lsm(score)
-        return lsm_score.view(-1, self.vocab_size)
-
-
 class FullModel(nn.Module):
-    def __init__(self, model, criterion):
+    def __init__(self, model: NMTModel, criterion: LabelSmoothingLoss):
         super(FullModel, self).__init__()
         self.model = model
         self.criterion = criterion

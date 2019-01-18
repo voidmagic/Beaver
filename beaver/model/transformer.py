@@ -54,18 +54,15 @@ class EncoderLayer(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, num_layers, num_heads, hidden_size, dropout, ff_size, embedding):
-        self.num_layers = num_layers
-
         super(Encoder, self).__init__()
-
         self.embedding = embedding
         self.layers = nn.ModuleList([EncoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
 
     def forward(self, src, src_pad):
         src_mask = src_pad.unsqueeze(1).repeat(1, src.size(1), 1)
         output = self.embedding(src)
-        for i in range(self.num_layers):
-            output = self.layers[i](output, src_mask)
+        for layer in self.layers:
+            output = layer(output, src_mask)
         return output
 
 
@@ -99,14 +96,10 @@ class DecoderLayer(nn.Module):
 class Decoder(nn.Module):
 
     def __init__(self, num_layers, num_heads, hidden_size, dropout, ff_size, embedding):
-        self.num_layers = num_layers
-        upper_triangle = torch.triu(torch.ones(1000, 1000), diagonal=1).byte()
-
         super(Decoder, self).__init__()
-
         self.embedding = embedding
         self.layers = nn.ModuleList([DecoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
-        self.register_buffer("upper_triangle", upper_triangle)
+        self.register_buffer("upper_triangle", torch.triu(torch.ones(1000, 1000), diagonal=1).byte())
 
     def forward(self, tgt, enc_out, src_pad, tgt_pad, previous=None, timestep=0):
 
@@ -120,11 +113,11 @@ class Decoder(nn.Module):
 
         tgt_mask = torch.gt(tgt_mask + upper_triangle, 0)
         saved_inputs = []
-        for i in range(self.num_layers):
+        for layer in self.layers:
             prev_layer = None if previous is None else previous[:, i]
             tgt_mask = tgt_mask if previous is None else None
 
-            output, all_input = self.layers[i](output, enc_out, src_mask, tgt_mask, prev_layer)
+            output, all_input = layer(output, enc_out, src_mask, tgt_mask, prev_layer)
             saved_inputs.append(all_input)
         return output, torch.stack(saved_inputs, dim=1)
 
@@ -133,14 +126,13 @@ class MultiHeadedAttention(nn.Module):
 
     def __init__(self, head_count, model_dim, dropout=0.0):
         self.dim_per_head = model_dim // head_count
-        self.model_dim = model_dim
         self.head_count = head_count
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.linear_keys = nn.Linear(model_dim, head_count * self.dim_per_head)
-        self.linear_values = nn.Linear(model_dim, head_count * self.dim_per_head)
-        self.linear_query = nn.Linear(model_dim, head_count * self.dim_per_head)
+        self.linear_keys = nn.Linear(model_dim, model_dim)
+        self.linear_values = nn.Linear(model_dim, model_dim)
+        self.linear_query = nn.Linear(model_dim, model_dim)
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
@@ -160,23 +152,21 @@ class MultiHeadedAttention(nn.Module):
     def forward(self, query, memory=None, mask=None):
         memory = query if memory is None else memory
         batch_size = memory.size(0)
-        dim_per_head = self.dim_per_head
-        head_count = self.head_count
 
         def split_head(x):
-            return x.view(batch_size, -1, head_count, dim_per_head).transpose(1, 2)
+            return x.view(batch_size, -1, self.head_count, self.dim_per_head).transpose(1, 2)
 
         def combine_head(x):
-            return x.transpose(1, 2).contiguous().view(batch_size, -1, head_count * dim_per_head)
+            return x.transpose(1, 2).contiguous().view(batch_size, -1, self.head_count * self.dim_per_head)
 
         # 1) Project key, value, and query.
-        key_up = split_head(self.linear_keys(memory))
-        value_up = split_head(self.linear_values(memory))
-        query_up = split_head(self.linear_query(query))
+        key = split_head(self.linear_keys(memory))
+        value = split_head(self.linear_values(memory))
+        query = split_head(self.linear_query(query))
 
         # 2) Calculate and scale scores.
-        query_up = query_up / math.sqrt(dim_per_head)
-        scores = torch.matmul(query_up, key_up.transpose(2, 3))
+        query = query / math.sqrt(self.dim_per_head)
+        scores = torch.matmul(query, key.transpose(2, 3))
 
         if mask is not None:
             mask = mask.unsqueeze(1).expand_as(scores)
@@ -185,7 +175,7 @@ class MultiHeadedAttention(nn.Module):
         # 3) Apply attention dropout and compute context vectors.
         attn = self.softmax(scores)
         drop_attn = self.dropout(attn)
-        context = combine_head(torch.matmul(drop_attn, value_up))
+        context = combine_head(torch.matmul(drop_attn, value))
 
         output = self.final_linear(context)
         return output

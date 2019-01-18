@@ -5,15 +5,11 @@ import datetime
 
 
 class Saver(object):
-    def __init__(self, save_path, max_to_keep, logger):
+    def __init__(self, save_path, max_to_keep):
         self.ckpt_names = []
         self.save_path = save_path + datetime.datetime.now().strftime("-%y%m%d-%H%M%S")
         self.max_to_keep = max_to_keep
-        if os.path.exists(self.save_path) and not os.path.isdir(self.save_path):
-            logger.info("%s is not a valid path" % self.save_path)
-            exit()
-        elif not os.path.exists(self.save_path):
-            os.mkdir(self.save_path)
+        os.mkdir(self.save_path)
 
     def save(self, save_dict, step, bleu, loss):
         filename = "checkpoint-step-%06d" % step

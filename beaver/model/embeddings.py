@@ -8,7 +8,7 @@ import torch.nn as nn
 
 def positional_encoding(embedding_dim, max_len=1e4):
     position = torch.arange(0, max_len).unsqueeze(1).float()
-    div_term = torch.exp(torch.arange(0, embedding_dim // 2).float() * -(math.log(10000.0) / ((embedding_dim // 2) - 1)))
+    div_term = torch.exp(torch.arange(0, embedding_dim // 2).float() * -(math.log(1.e4) / ((embedding_dim // 2) - 1)))
     pe = torch.cat([torch.sin(position * div_term), torch.cos(position * div_term)], dim=1)
     return pe
 

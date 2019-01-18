@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from typing import List
 
 import torch
 
@@ -9,7 +10,7 @@ PAD_TOKEN = "<pad>"
 
 
 class Field(object):
-    def __init__(self, bos=False, eos=False, pad=True, unk=True):
+    def __init__(self, bos: bool, eos: bool, pad: bool, unk: bool):
         self.bos_token = BOS_TOKEN if bos else None
         self.eos_token = EOS_TOKEN if eos else None
         self.unk_token = UNK_TOKEN if unk else None
@@ -17,7 +18,7 @@ class Field(object):
 
         self.vocab = None
 
-    def load_vocab(self, words, specials):
+    def load_vocab(self, words: List[str], specials: List[str]):
         self.vocab = Vocab(words, specials)
 
     def process(self, batch, device):
@@ -80,7 +81,7 @@ class Field(object):
 
 
 class Vocab(object):
-    def __init__(self, words, specials):
+    def __init__(self, words: List[str], specials: List[str]):
         self.itos = specials + words
         self.stoi = {tok: i for i, tok in enumerate(self.itos)}
 

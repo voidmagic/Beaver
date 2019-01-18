@@ -2,6 +2,11 @@
 
 import random
 from collections import namedtuple
+from typing import Dict, Tuple, List
+
+import torch
+
+from beaver.data.field import Field
 
 Batch = namedtuple("Batch", ['src', 'tgt', 'batch_size'])
 Example = namedtuple("Example", ['src', 'tgt'])
@@ -9,7 +14,14 @@ Example = namedtuple("Example", ['src', 'tgt'])
 
 class TranslationDataset(object):
 
-    def __init__(self, src_path, tgt_path, batch_size, device, train, fields):
+    def __init__(self,
+                 src_path: str,
+                 tgt_path: str,
+                 batch_size: int,
+                 device: torch.device,
+                 train: bool,
+                 fields: Dict[str, Field]):
+
         self.batch_size = batch_size
         self.train = train
         self.device = device
