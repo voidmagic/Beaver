@@ -28,4 +28,4 @@ def get_logger():
 
 
 def printing_opt(opt):
-    return "\n" + "\n".join(["%15s | %s" % (e[0], e[1]) for e in sorted(vars(opt).items(), key=lambda x: x[0])])
+    return "\n".join(["%15s | %s" % (e[0], e[1]) for e in sorted(vars(opt).items(), key=lambda x: x[0])])

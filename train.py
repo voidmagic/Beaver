@@ -25,7 +25,7 @@ opt = parser.parse_args()
 device = get_device()
 logger = get_logger()
 
-logger.info(printing_opt(opt))
+logger.info("\n" + printing_opt(opt))
 
 saver = Saver(save_path=opt.model_path, max_to_keep=opt.max_to_keep)
 loader = Loader(opt.model_path, opt, logger)

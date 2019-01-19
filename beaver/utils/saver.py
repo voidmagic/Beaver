@@ -20,7 +20,7 @@ class Saver(object):
         with open(os.path.join(self.save_path, "log"), "a", encoding="UTF-8") as log:
             log.write("%s\t step: %6d\t loss: %.2f\t bleu: %.2f\n" % (datetime.datetime.now(), step, loss, bleu))
         with open(os.path.join(self.save_path, "params"), "a", encoding="UTF-8") as log:
-            log.write(opt_str)
+            log.write(opt_str + "\n")
 
         if 0 < self.max_to_keep < len(self.ckpt_names):
             earliest_ckpt = self.ckpt_names.pop(0)
