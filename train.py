@@ -49,7 +49,7 @@ def valid(model, valid_dataset, step):
     bleu = calculate_bleu(hypothesis, references)
     logger.info("Valid loss: %.2f\tValid Beam BLEU: %3.2f" % (total_loss / total, bleu))
     checkpoint = {"model": model.module.model.state_dict(), "opt": opt}
-    saver.save(checkpoint, opt, step, bleu, total_loss / total)
+    saver.save(checkpoint, printing_opt(opt), step, bleu, total_loss / total)
 
 
 def train(model, optimizer, train_dataset, valid_dataset):
