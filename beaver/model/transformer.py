@@ -9,25 +9,24 @@ import torch.nn as nn
 class FeedForward(nn.Module):
     def __init__(self, hidden_size, inner_size, dropout=0.0):
         super(FeedForward, self).__init__()
-        self.w_1 = nn.Linear(hidden_size, inner_size)
-        self.w_2 = nn.Linear(inner_size, hidden_size)
-        self.dropout_1 = nn.Dropout(dropout)
-        self.dropout_2 = nn.Dropout(dropout)
+        self.linear_in = nn.Linear(hidden_size, inner_size)
+        self.linear_out = nn.Linear(inner_size, hidden_size)
+        self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
 
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.w_1.weight)
-        nn.init.xavier_uniform_(self.w_2.weight)
-        nn.init.constant_(self.w_1.bias, 0.)
-        nn.init.constant_(self.w_2.bias, 0.)
+        nn.init.xavier_uniform_(self.linear_in.weight)
+        nn.init.xavier_uniform_(self.linear_out.weight)
+        nn.init.constant_(self.linear_in.bias, 0.)
+        nn.init.constant_(self.linear_out.bias, 0.)
 
     def forward(self, x):
-        y = self.w_1(x)
+        y = self.linear_in(x)
         y = self.relu(y)
-        y = self.dropout_1(y)
-        y = self.w_2(y)
+        y = self.dropout(y)
+        y = self.linear_out(y)
         return y
 
 

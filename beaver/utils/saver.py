@@ -3,6 +3,8 @@ import torch
 import os
 import datetime
 
+from beaver.utils import printing_opt
+
 
 class Saver(object):
     def __init__(self, save_path, max_to_keep):
@@ -11,14 +13,16 @@ class Saver(object):
         self.max_to_keep = max_to_keep
         os.mkdir(self.save_path)
 
-    def save(self, save_dict, step, bleu, loss):
+    def save(self, parameters, opt, step, bleu, loss):
         filename = "checkpoint-step-%06d" % step
         full_filename = os.path.join(self.save_path, filename)
         self.ckpt_names.append(full_filename)
-        torch.save(save_dict, full_filename)
+        torch.save({"model": parameters, "opt": opt}, full_filename)
 
         with open(os.path.join(self.save_path, "log"), "a", encoding="UTF-8") as log:
             log.write("%s\t step: %6d\t loss: %.2f\t bleu: %.2f\n" % (datetime.datetime.now(), step, loss, bleu))
+        with open(os.path.join(self.save_path, "params"), "a", encoding="UTF-8") as log:
+            log.write(printing_opt(opt))
 
         if 0 < self.max_to_keep < len(self.ckpt_names):
             earliest_ckpt = self.ckpt_names.pop(0)

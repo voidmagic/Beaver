@@ -28,12 +28,9 @@ def model_opts(parser):
     parser.add_argument("-ff_size", type=int, default=2048, help="Feed forward hidden size")
 
     parser.add_argument("-lr", type=float, default=1.0, help="Learning rate")
-    parser.add_argument("-warm_up", type=int, default=4000, help="Warm up step")
+    parser.add_argument("-warm_up", type=int, default=8000, help="Warm up step")
     parser.add_argument("-label_smoothing", type=float, default=0.1, help="Label smoothing rate")
     parser.add_argument("-dropout", type=float, default=0.1, help="Dropout rate")
-
-    parser.add_argument("-betas", type=float, nargs=2, default=[0.9, 0.98], help="Adam beta")
-    parser.add_argument("-eps", type=float, default=1e-9, help="Adam eps")
 
 
 def translate_opts(parser):

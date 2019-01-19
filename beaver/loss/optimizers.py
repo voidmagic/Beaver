@@ -6,12 +6,12 @@ import torch.optim as optim
 
 
 class WarmAdam(object):
-    def __init__(self, params, lr, betas, eps, hidden_size, warm_up, init_step):
+    def __init__(self, params, lr, hidden_size, warm_up, init_step):
         self.original_lr = lr
         self.n_step = init_step
         self.hidden_size = hidden_size
         self.warm_up_step = warm_up
-        self.optimizer = optim.Adam(params, betas=betas, eps=eps)
+        self.optimizer = optim.Adam(params, betas=[0.9, 0.98], eps=1e-9)
 
     def step(self):
         self.n_step += 1

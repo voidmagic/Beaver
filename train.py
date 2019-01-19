@@ -12,7 +12,7 @@ from beaver.loss import WarmAdam, LabelSmoothingLoss
 from beaver.model import NMTModel, FullModel
 from beaver.utils import Saver, Loader
 from beaver.utils import calculate_bleu
-from beaver.utils import parseopt, get_device, get_logger
+from beaver.utils import parseopt, get_device, get_logger, printing_opt
 
 parser = argparse.ArgumentParser()
 
@@ -25,11 +25,13 @@ opt = parser.parse_args()
 device = get_device()
 logger = get_logger()
 
+logger.info(printing_opt(opt))
+
 saver = Saver(save_path=opt.model_path, max_to_keep=opt.max_to_keep)
 loader = Loader(opt.model_path, opt, logger)
 
 
-def valid(model, valid_dataset):
+def valid(model, valid_dataset, step):
     model.eval()
     total_loss, total = 0.0, 0
 
@@ -46,7 +48,7 @@ def valid(model, valid_dataset):
 
     bleu = calculate_bleu(hypothesis, references)
     logger.info("Valid loss: %.2f\tValid Beam BLEU: %3.2f" % (total_loss / total, bleu))
-    return total_loss / total, bleu
+    saver.save(model.module.model.state_dict(), opt, step, bleu, total_loss / total)
 
 
 def train(model, optimizer, train_dataset, valid_dataset):
@@ -62,15 +64,12 @@ def train(model, optimizer, train_dataset, valid_dataset):
             model.zero_grad()
 
             if optimizer.n_step % opt.report_every == 0:
-                logger.info("step: %7d\t loss: %7f" % (optimizer.n_step, total_loss / opt.report_every / opt.grad_accum))
+                logger.info("step: %7d\tloss: %7f" % (optimizer.n_step, total_loss / opt.report_every / opt.grad_accum))
                 total_loss = 0.0
 
             if optimizer.n_step % opt.save_every == 0:
                 with torch.set_grad_enabled(False):
-                    valid_loss, valid_bleu = valid(model, valid_dataset)
-                    checkpoint = {"model": model.module.model.state_dict(),
-                                  "opt": opt}
-                    saver.save(checkpoint, optimizer.n_step, valid_bleu, valid_loss)
+                    valid(model, valid_dataset, optimizer.n_step)
                 model.train()
         del loss
 
@@ -86,13 +85,11 @@ def main():
     criterion = LabelSmoothingLoss(opt.label_smoothing, len(fields["tgt"].vocab), fields["tgt"].pad_id)
     model = nn.DataParallel(FullModel(model, criterion)).to(device)
 
-    optimizer = WarmAdam(model.module.model.parameters(), opt.lr, opt.betas,
-                         opt.eps, opt.hidden_size, opt.warm_up, loader.step)
+    optimizer = WarmAdam(model.module.model.parameters(), opt.lr, opt.hidden_size, opt.warm_up, loader.step)
 
     logger.info("start training...")
     train(model, optimizer, train_dataset, valid_dataset)
 
 
 if __name__ == '__main__':
-    logger.info("\n" + "\n".join(["%15s | %s" % (e[0], e[1]) for e in sorted(vars(opt).items(), key=lambda x: x[0])]))
     main()
