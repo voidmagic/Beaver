@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import math
-
 import torch
 import torch.nn as nn
 
@@ -129,9 +127,10 @@ class MultiHeadedAttention(nn.Module):
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.linear_keys = nn.Linear(model_dim, model_dim)
-        self.linear_values = nn.Linear(model_dim, model_dim)
-        self.linear_query = nn.Linear(model_dim, model_dim)
+        self.linear_q = nn.Linear(model_dim, model_dim)
+        self.linear_kv = nn.Linear(model_dim, model_dim * 2)
+        self.linear_qkv = nn.Linear(model_dim, model_dim * 3)
+
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
@@ -139,18 +138,17 @@ class MultiHeadedAttention(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.linear_keys.weight)
-        nn.init.xavier_uniform_(self.linear_query.weight)
-        nn.init.xavier_uniform_(self.linear_values.weight)
+        nn.init.xavier_uniform_(self.linear_q.weight)
+        nn.init.xavier_uniform_(self.linear_kv.weight)
+        nn.init.xavier_uniform_(self.linear_qkv.weight)
         nn.init.xavier_uniform_(self.final_linear.weight)
-        nn.init.constant_(self.linear_keys.bias, 0.)
-        nn.init.constant_(self.linear_query.bias, 0.)
-        nn.init.constant_(self.linear_values.bias, 0.)
+        nn.init.constant_(self.linear_q.bias, 0.)
+        nn.init.constant_(self.linear_kv.bias, 0.)
+        nn.init.constant_(self.linear_qkv.bias, 0.)
         nn.init.constant_(self.final_linear.bias, 0.)
 
     def forward(self, query, memory=None, mask=None):
-        memory = query if memory is None else memory
-        batch_size = memory.size(0)
+        batch_size = query.size(0)
 
         def split_head(x):
             return x.view(batch_size, -1, self.head_count, self.dim_per_head).transpose(1, 2)
@@ -158,23 +156,27 @@ class MultiHeadedAttention(nn.Module):
         def combine_head(x):
             return x.transpose(1, 2).contiguous().view(batch_size, -1, self.head_count * self.dim_per_head)
 
+        if memory is None:
+            q, k, v = torch.chunk(self.linear_qkv(query), 3, dim=-1)
+        else:
+            q = self.linear_q(query)
+            k, v = torch.chunk(self.linear_kv(memory), 2, dim=-1)
+
         # 1) Project key, value, and query.
-        key = split_head(self.linear_keys(memory))
-        value = split_head(self.linear_values(memory))
-        query = split_head(self.linear_query(query))
+        q = split_head(q)
+        k = split_head(k)
+        v = split_head(v)
 
         # 2) Calculate and scale scores.
-        query = query / math.sqrt(self.dim_per_head)
-        scores = torch.matmul(query, key.transpose(2, 3))
+        q = q * self.dim_per_head ** -0.5
+        scores = torch.matmul(q, k.transpose(2, 3))
 
         if mask is not None:
             mask = mask.unsqueeze(1).expand_as(scores)
             scores = scores.masked_fill(mask, -1e20)
 
         # 3) Apply attention dropout and compute context vectors.
-        attn = self.softmax(scores)
-        drop_attn = self.dropout(attn)
-        context = combine_head(torch.matmul(drop_attn, value))
+        weights = self.dropout(self.softmax(scores))
+        context = combine_head(torch.matmul(weights, v))
 
-        output = self.final_linear(context)
-        return output
+        return self.final_linear(context)
