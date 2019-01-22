@@ -106,8 +106,8 @@ class Decoder(nn.Module):
         src_mask = src_pad.unsqueeze(1).repeat(1, tgt_len, 1)
         tgt_mask = tgt_pad.unsqueeze(1).repeat(1, tgt_len, 1)
         upper_triangle = self.upper_triangle[:tgt_len, :tgt_len]
-        # tgt mask: 0 if not upper and not pad, 1 or 2 otherwise
 
+        # tgt mask: 0 if not upper and not pad
         tgt_mask = torch.gt(tgt_mask + upper_triangle, 0)
         saved_inputs = []
         for i, layer in enumerate(self.layers):
@@ -171,8 +171,10 @@ class MultiHeadedAttention(nn.Module):
         q = q * self.dim_per_head ** -0.5
         scores = torch.matmul(q, k.transpose(2, 3))
 
-        mask = mask.unsqueeze(1).expand_as(scores)
-        scores = scores.masked_fill(mask, -1e20)
+        # In beam search, the target mask might be None
+        if mask is not None:
+            mask = mask.unsqueeze(1).expand_as(scores)
+            scores = scores.masked_fill(mask, -1e20)
 
         # 3) Apply attention dropout and compute context vectors.
         weights = self.dropout(self.softmax(scores))

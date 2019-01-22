@@ -38,11 +38,12 @@ class NMTModel(nn.Module):
         self.generator = generator
 
     def forward(self, src, tgt):
+        tgt = tgt[:, :-1]  # shift
         src_pad = src.eq(self.encoder.embedding.word_padding_idx)
         tgt_pad = tgt.eq(self.decoder.embedding.word_padding_idx)
 
         enc_out = self.encoder(src, src_pad)
-        decoder_outputs, _ = self.decoder(tgt[:, :-1], enc_out, src_pad, tgt_pad[:, :-1])
+        decoder_outputs, _ = self.decoder(tgt, enc_out, src_pad, tgt_pad)
         scores = self.generator(decoder_outputs)
         return scores
 
@@ -62,6 +63,7 @@ class NMTModel(nn.Module):
                                       vocab_size=len(fields["tgt"].vocab),
                                       bias=False)
         else:
+            # use shared word embedding for source and target
             tgt_embedding = src_embedding
 
         encoder = Encoder(model_opt.layers,
