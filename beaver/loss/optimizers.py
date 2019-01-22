@@ -39,7 +39,7 @@ class LabelSmoothingLoss(nn.Module):
         numel = target.ne(self.padding_idx).float().sum()
         truth = self.one_hot.repeat(target.size(0), 1)
         truth.scatter_(1, target.unsqueeze(1), self.confidence)
-        truth = truth.masked_fill((target == self.padding_idx).unsqueeze(1), 0)
+        truth.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
         loss = self.kl_div(output, truth)
         return loss / numel
 
