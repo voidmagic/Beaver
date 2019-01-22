@@ -33,7 +33,7 @@ class EncoderLayer(nn.Module):
     def __init__(self, hidden_size, dropout, head_count, ff_size):
         super(EncoderLayer, self).__init__()
 
-        self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
+        self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, True)
         self.feed_forward = FeedForward(hidden_size, ff_size, dropout)
         self.dropout = nn.Dropout(dropout)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
@@ -67,8 +67,8 @@ class DecoderLayer(nn.Module):
 
     def __init__(self, hidden_size, dropout, head_count, ff_size):
         super(DecoderLayer, self).__init__()
-        self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
-        self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout=dropout)
+        self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
+        self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
         self.feed_forward = FeedForward(hidden_size, ff_size, dropout)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(3)])
         self.dropout = nn.Dropout(dropout)
@@ -121,15 +121,15 @@ class Decoder(nn.Module):
 
 class MultiHeadedAttention(nn.Module):
 
-    def __init__(self, head_count, model_dim, dropout=0.0):
+    def __init__(self, head_count, model_dim, dropout, on_self):
         self.dim_per_head = model_dim // head_count
         self.head_count = head_count
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.linear_q = nn.Linear(model_dim, model_dim)
-        self.linear_kv = nn.Linear(model_dim, model_dim * 2)
-        self.linear_qkv = nn.Linear(model_dim, model_dim * 3)
+        self.linear_q = nn.Linear(model_dim, model_dim) if not on_self else None
+        self.linear_kv = nn.Linear(model_dim, model_dim * 2) if not on_self else None
+        self.linear_qkv = nn.Linear(model_dim, model_dim * 3) if on_self else None
 
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
@@ -138,13 +138,15 @@ class MultiHeadedAttention(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        nn.init.xavier_uniform_(self.linear_q.weight)
-        nn.init.xavier_uniform_(self.linear_kv.weight)
-        nn.init.xavier_uniform_(self.linear_qkv.weight)
+        if self.linear_qkv:
+            nn.init.xavier_uniform_(self.linear_qkv.weight)
+            nn.init.constant_(self.linear_qkv.bias, 0.)
+        else:
+            nn.init.xavier_uniform_(self.linear_q.weight)
+            nn.init.xavier_uniform_(self.linear_kv.weight)
+            nn.init.constant_(self.linear_q.bias, 0.)
+            nn.init.constant_(self.linear_kv.bias, 0.)
         nn.init.xavier_uniform_(self.final_linear.weight)
-        nn.init.constant_(self.linear_q.bias, 0.)
-        nn.init.constant_(self.linear_kv.bias, 0.)
-        nn.init.constant_(self.linear_qkv.bias, 0.)
         nn.init.constant_(self.final_linear.bias, 0.)
 
     def forward(self, query, memory, mask):
