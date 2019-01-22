@@ -57,7 +57,7 @@ class Field(object):
             if tok == self.bos_token:
                 continue
             tokens.append(tok)
-        return " ".join(tokens).replace("@@ ", "").replace("@@", "")
+        return " ".join(tokens)
 
     @property
     def special(self):
