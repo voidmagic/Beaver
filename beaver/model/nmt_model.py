@@ -49,9 +49,18 @@ class NMTModel(nn.Module):
     @classmethod
     def load_model(cls, loader: Loader, fields: Dict[str, Field]):
         model_opt = loader.params
-        src_embedding = Embedding.make_embedding(model_opt, fields["src"], model_opt.hidden_size)
+        src_embedding = Embedding(embedding_dim=model_opt.hidden_size,
+                                  dropout=model_opt.dropout,
+                                  padding_idx=fields["src"].pad_id,
+                                  vocab_size=len(fields["src"].vocab),
+                                  bias=True)
+
         if len(model_opt.vocab) == 2:
-            tgt_embedding = Embedding.make_embedding(model_opt, fields["tgt"], model_opt.hidden_size)
+            tgt_embedding = Embedding(embedding_dim=model_opt.hidden_size,
+                                      dropout=model_opt.dropout,
+                                      padding_idx=fields["tgt"].pad_id,
+                                      vocab_size=len(fields["tgt"].vocab),
+                                      bias=False)
         else:
             tgt_embedding = src_embedding
 

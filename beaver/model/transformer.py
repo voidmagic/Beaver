@@ -40,7 +40,7 @@ class EncoderLayer(nn.Module):
 
     def forward(self, x, mask):
         # self attention
-        y = self.self_attn(x, mask=mask)
+        y = self.self_attn(x, memory=None, mask=mask)
         x = self.norm[0](x + self.dropout(y))
 
         # feed forward
@@ -77,11 +77,11 @@ class DecoderLayer(nn.Module):
         all_input = x if previous is None else torch.cat((previous, x), dim=1)
 
         # self attention
-        y = self.self_attn(x, all_input, tgt_mask)
+        y = self.self_attn(x, memory=all_input, mask=tgt_mask)
         x = self.norm[0](x + self.dropout(y))
 
         # encoder decoder attention
-        y = self.src_attn(x, enc_out, src_mask)
+        y = self.src_attn(x, memory=enc_out, mask=src_mask)
         x = self.norm[1](x + self.dropout(y))
 
         # feed forward
@@ -147,14 +147,14 @@ class MultiHeadedAttention(nn.Module):
         nn.init.constant_(self.linear_qkv.bias, 0.)
         nn.init.constant_(self.final_linear.bias, 0.)
 
-    def forward(self, query, memory=None, mask=None):
-        batch_size = query.size(0)
-
+    def forward(self, query, memory, mask):
         def split_head(x):
-            return x.view(batch_size, -1, self.head_count, self.dim_per_head).transpose(1, 2)
+            # B x L x D => B x h x L x d
+            return x.view(x.size(0), -1, self.head_count, self.dim_per_head).transpose(1, 2)
 
         def combine_head(x):
-            return x.transpose(1, 2).contiguous().view(batch_size, -1, self.head_count * self.dim_per_head)
+            # B x h x L x d  => B x L x D
+            return x.transpose(1, 2).contiguous().view(x.size(0), -1, self.head_count * self.dim_per_head)
 
         if memory is None:
             q, k, v = torch.chunk(self.linear_qkv(query), 3, dim=-1)
@@ -162,7 +162,7 @@ class MultiHeadedAttention(nn.Module):
             q = self.linear_q(query)
             k, v = torch.chunk(self.linear_kv(memory), 2, dim=-1)
 
-        # 1) Project key, value, and query.
+        # 1) Project q, k, v.
         q = split_head(q)
         k = split_head(k)
         v = split_head(v)
@@ -171,9 +171,8 @@ class MultiHeadedAttention(nn.Module):
         q = q * self.dim_per_head ** -0.5
         scores = torch.matmul(q, k.transpose(2, 3))
 
-        if mask is not None:
-            mask = mask.unsqueeze(1).expand_as(scores)
-            scores = scores.masked_fill(mask, -1e20)
+        mask = mask.unsqueeze(1).expand_as(scores)
+        scores = scores.masked_fill(mask, -1e20)
 
         # 3) Apply attention dropout and compute context vectors.
         weights = self.dropout(self.softmax(scores))

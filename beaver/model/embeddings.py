@@ -14,7 +14,7 @@ def positional_encoding(embedding_dim, max_len=1e4):
 
 
 class Embedding(nn.Module):
-    def __init__(self, embedding_dim, vocab_size, padding_idx, dropout=0.0, bias=False):
+    def __init__(self, embedding_dim, vocab_size, padding_idx, dropout, bias):
         self.word_padding_idx = padding_idx
         self.embedding_dim = embedding_dim
         pe = positional_encoding(embedding_dim)
@@ -39,13 +39,3 @@ class Embedding(nn.Module):
     def forward(self, x, timestep=0):
         embedding = self.embedding(x) * (self.embedding_dim ** 0.5) + self.bias
         return self.dropout(embedding) + self.pe[timestep:timestep + x.size(1)]
-
-    @classmethod
-    def make_embedding(cls, opt, field, embedding_dim):
-        word_padding_idx = field.pad_id
-        vocab_size = len(field.vocab)
-        return cls(embedding_dim=embedding_dim,
-                   dropout=opt.dropout,
-                   padding_idx=word_padding_idx,
-                   vocab_size=vocab_size)
-
