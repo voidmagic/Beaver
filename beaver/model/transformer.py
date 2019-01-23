@@ -5,11 +5,10 @@ import torch.nn as nn
 
 
 class FeedForward(nn.Module):
-    def __init__(self, hidden_size, inner_size, dropout=0.0):
+    def __init__(self, hidden_size, inner_size):
         super(FeedForward, self).__init__()
         self.linear_in = nn.Linear(hidden_size, inner_size)
         self.linear_out = nn.Linear(inner_size, hidden_size)
-        self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
 
         self.reset_parameters()
@@ -23,7 +22,6 @@ class FeedForward(nn.Module):
     def forward(self, x):
         y = self.linear_in(x)
         y = self.relu(y)
-        y = self.dropout(y)
         y = self.linear_out(y)
         return y
 
@@ -34,7 +32,7 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()
 
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, True)
-        self.feed_forward = FeedForward(hidden_size, ff_size, dropout)
+        self.feed_forward = FeedForward(hidden_size, ff_size)
         self.dropout = nn.Dropout(dropout)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
 
@@ -69,7 +67,7 @@ class DecoderLayer(nn.Module):
         super(DecoderLayer, self).__init__()
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
         self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
-        self.feed_forward = FeedForward(hidden_size, ff_size, dropout)
+        self.feed_forward = FeedForward(hidden_size, ff_size)
         self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(3)])
         self.dropout = nn.Dropout(dropout)
 
@@ -176,7 +174,7 @@ class MultiHeadedAttention(nn.Module):
         # In beam search, the target mask might be None
         if mask is not None:
             mask = mask.unsqueeze(1).expand_as(scores)
-            scores = scores.masked_fill(mask, -1e20)
+            scores.masked_fill_(mask, -1e20)
 
         # 3) Apply attention dropout and compute context vectors.
         weights = self.dropout(self.softmax(scores))
