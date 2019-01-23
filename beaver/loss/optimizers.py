@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import torch
 import torch.nn as nn
 import torch.optim as optim
 
@@ -25,21 +24,14 @@ class WarmAdam(object):
 class LabelSmoothingLoss(nn.Module):
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index):
         self.padding_idx = ignore_index
+        self.eps = label_smoothing
+        self.v = tgt_vocab_size
         super(LabelSmoothingLoss, self).__init__()
 
-        smoothing_value = label_smoothing / (tgt_vocab_size - 2)
-        one_hot = torch.full((tgt_vocab_size,), smoothing_value)
-        one_hot[self.padding_idx] = 0
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
-
-        self.confidence = 1.0 - label_smoothing
-        self.kl_div = nn.KLDivLoss(reduction='sum')
-
     def forward(self, output, target):
-        numel = target.ne(self.padding_idx).float().sum()
-        truth = self.one_hot.repeat(target.size(0), 1)
-        truth.scatter_(1, target.unsqueeze(1), self.confidence)
-        truth.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
-        loss = self.kl_div(output, truth)
-        return loss / numel
-
+        non_pad_mask = target.ne(self.padding_idx)
+        nll_loss = -output.gather(dim=-1, index=target.view(-1, 1))[non_pad_mask].sum()
+        smooth_loss = -output.sum(dim=-1, keepdim=True)[non_pad_mask].sum()
+        eps_i = self.eps / self.v
+        loss = (1. - self.eps) * nll_loss + eps_i * smooth_loss
+        return loss / non_pad_mask.sum()
