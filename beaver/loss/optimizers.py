@@ -10,6 +10,7 @@ class WarmAdam(object):
         self.n_step = init_step
         self.hidden_size = hidden_size
         self.warm_up_step = warm_up
+        self.params = params
         self.optimizer = optim.Adam(params, betas=[0.9, 0.98], eps=1e-9)
 
     def step(self):
@@ -18,6 +19,8 @@ class WarmAdam(object):
         lr = self.original_lr * (self.hidden_size ** (-0.5) * warm_up)
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = lr
+
+        nn.utils.clip_grad_norm_(self.params, 0.1)
         self.optimizer.step()
 
 
