@@ -34,4 +34,4 @@ class LabelSmoothingLoss(nn.Module):
         smooth_loss = -output.sum(dim=-1, keepdim=True)[non_pad_mask].sum()
         eps_i = self.eps / self.v
         loss = (1. - self.eps) * nll_loss + eps_i * smooth_loss
-        return loss / non_pad_mask.sum()
+        return loss / non_pad_mask.float().sum()
