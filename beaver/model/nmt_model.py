@@ -53,13 +53,15 @@ class NMTModel(nn.Module):
         src_embedding = Embedding(embedding_dim=model_opt.hidden_size,
                                   dropout=model_opt.dropout,
                                   padding_idx=fields["src"].pad_id,
-                                  vocab_size=len(fields["src"].vocab))
+                                  vocab_size=len(fields["src"].vocab),
+                                  bias=True)
 
         if len(model_opt.vocab) == 2:
             tgt_embedding = Embedding(embedding_dim=model_opt.hidden_size,
                                       dropout=model_opt.dropout,
                                       padding_idx=fields["tgt"].pad_id,
-                                      vocab_size=len(fields["tgt"].vocab))
+                                      vocab_size=len(fields["tgt"].vocab),
+                                      bias=False)
         else:
             # use shared word embedding for source and target
             tgt_embedding = src_embedding
