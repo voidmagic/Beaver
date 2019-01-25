@@ -98,4 +98,4 @@ class FullModel(nn.Module):
         tgt = tgt[:, 1:].contiguous().view(-1)
         loss = self.criterion(scores, tgt)
         _, tokens = tgt.topk(1)
-        return loss.unsqueeze(0), (tokens.view(-1) == tgt).float().unsqueeze(0) / tgt.size(0)
+        return loss.unsqueeze(0), (tokens.view(-1) == tgt).float().sum().unsqueeze(0) / tgt.size(0)
