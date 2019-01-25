@@ -11,7 +11,8 @@ class FeedForward(nn.Module):
         self.linear_out = nn.Linear(inner_size, hidden_size)
         self.relu = nn.ReLU()
 
-        self.reset_parameters()
+        # todo: the different between xavier and default kaiming of Linear initializer
+        # self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.linear_in.weight)
@@ -21,6 +22,8 @@ class FeedForward(nn.Module):
 
     def forward(self, x):
         y = self.linear_in(x)
+
+        # todo: does RELU need dropout?
         y = self.relu(y)
         y = self.linear_out(y)
         return y
@@ -34,16 +37,17 @@ class EncoderLayer(nn.Module):
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, True)
         self.feed_forward = FeedForward(hidden_size, ff_size)
         self.dropout = nn.Dropout(dropout)
-        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(2)])
+        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size, eps=1e-6) for _ in range(2)])
 
     def forward(self, x, mask):
         # self attention
-        y = self.self_attn(x, memory=None, mask=mask)
-        x = self.norm[0](x + self.dropout(y))
+        norm_in = self.norm[0](x)
+        y = self.self_attn(norm_in, norm_in, norm_in, mask=mask)
+        x = x + self.dropout(y)
 
         # feed forward
-        y = self.feed_forward(x)
-        x = self.norm[1](x + self.dropout(y))
+        y = self.feed_forward(self.norm[1](x))
+        x = x + self.dropout(y)
         return x
 
 
@@ -52,13 +56,14 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
         self.embedding = embedding
         self.layers = nn.ModuleList([EncoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
+        self.norm = nn.LayerNorm(hidden_size, eps=1e-6)
 
     def forward(self, src, src_pad):
         src_mask = src_pad.unsqueeze(1).repeat(1, src.size(1), 1)
         output = self.embedding(src)
         for layer in self.layers:
             output = layer(output, src_mask)
-        return output
+        return self.norm(output)
 
 
 class DecoderLayer(nn.Module):
@@ -68,23 +73,24 @@ class DecoderLayer(nn.Module):
         self.self_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
         self.src_attn = MultiHeadedAttention(head_count, hidden_size, dropout, False)
         self.feed_forward = FeedForward(hidden_size, ff_size)
-        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size) for _ in range(3)])
+        self.norm = nn.ModuleList([nn.LayerNorm(hidden_size, eps=1e-6) for _ in range(3)])
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, enc_out, src_mask, tgt_mask, previous=None):
         all_input = x if previous is None else torch.cat((previous, x), dim=1)
 
         # self attention
-        y = self.self_attn(x, memory=all_input, mask=tgt_mask)
-        x = self.norm[0](x + self.dropout(y))
+        norm_memory = self.norm[0](all_input)
+        y = self.self_attn(self.norm[0](x), norm_memory, norm_memory, mask=tgt_mask)
+        x = x + self.dropout(y)
 
         # encoder decoder attention
-        y = self.src_attn(x, memory=enc_out, mask=src_mask)
-        x = self.norm[1](x + self.dropout(y))
+        y = self.src_attn(self.norm[1](x), memory=enc_out, mask=src_mask)
+        x = x + self.dropout(y)
 
         # feed forward
-        y = self.feed_forward(x)
-        x = self.norm[2](x + self.dropout(y))
+        y = self.feed_forward(self.norm[2](x))
+        x = x + self.dropout(y)
         return x, all_input
 
 
@@ -95,6 +101,7 @@ class Decoder(nn.Module):
         self.embedding = embedding
         self.layers = nn.ModuleList([DecoderLayer(hidden_size, dropout, num_heads, ff_size) for _ in range(num_layers)])
         self.register_buffer("upper_triangle", torch.triu(torch.ones(1000, 1000), diagonal=1).byte())
+        self.norm = nn.LayerNorm(hidden_size, eps=1e-6)
 
     def forward(self, tgt, enc_out, src_pad, tgt_pad, previous=None, timestep=0):
 
@@ -114,7 +121,7 @@ class Decoder(nn.Module):
 
             output, all_input = layer(output, enc_out, src_mask, tgt_mask, prev_layer)
             saved_inputs.append(all_input)
-        return output, torch.stack(saved_inputs, dim=1)
+        return self.norm(output), torch.stack(saved_inputs, dim=1)
 
 
 class MultiHeadedAttention(nn.Module):
@@ -125,29 +132,28 @@ class MultiHeadedAttention(nn.Module):
 
         super(MultiHeadedAttention, self).__init__()
 
-        self.linear_q = nn.Linear(model_dim, model_dim) if not on_self else None
-        self.linear_kv = nn.Linear(model_dim, model_dim * 2) if not on_self else None
-        self.linear_qkv = nn.Linear(model_dim, model_dim * 3) if on_self else None
+        self.linear_q = nn.Linear(model_dim, model_dim)
+        self.linear_k = nn.Linear(model_dim, model_dim)
+        self.linear_v = nn.Linear(model_dim, model_dim)
 
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
         self.final_linear = nn.Linear(model_dim, model_dim)
 
-        self.reset_parameters()
+        # todo: the different between xavier and default kaiming of Linear initializer
+        # self.reset_parameters()
 
     def reset_parameters(self):
-        if self.linear_qkv:
-            nn.init.xavier_uniform_(self.linear_qkv.weight)
-            nn.init.constant_(self.linear_qkv.bias, 0.)
-        else:
-            nn.init.xavier_uniform_(self.linear_q.weight)
-            nn.init.xavier_uniform_(self.linear_kv.weight)
-            nn.init.constant_(self.linear_q.bias, 0.)
-            nn.init.constant_(self.linear_kv.bias, 0.)
+        nn.init.xavier_uniform_(self.linear_q.weight)
+        nn.init.xavier_uniform_(self.linear_k.weight)
+        nn.init.xavier_uniform_(self.linear_v.weight)
+        nn.init.constant_(self.linear_q.bias, 0.)
+        nn.init.constant_(self.linear_k.bias, 0.)
+        nn.init.constant_(self.linear_v.bias, 0.)
         nn.init.xavier_uniform_(self.final_linear.weight)
         nn.init.constant_(self.final_linear.bias, 0.)
 
-    def forward(self, query, memory, mask):
+    def forward(self, q, k, v, mask):
         def split_head(x):
             # B x L x D => B x h x L x d
             return x.view(x.size(0), -1, self.head_count, self.dim_per_head).transpose(1, 2)
@@ -156,16 +162,10 @@ class MultiHeadedAttention(nn.Module):
             # B x h x L x d  => B x L x D
             return x.transpose(1, 2).contiguous().view(x.size(0), -1, self.head_count * self.dim_per_head)
 
-        if memory is None:
-            q, k, v = torch.chunk(self.linear_qkv(query), 3, dim=-1)
-        else:
-            q = self.linear_q(query)
-            k, v = torch.chunk(self.linear_kv(memory), 2, dim=-1)
-
         # 1) Project q, k, v.
-        q = split_head(q)
-        k = split_head(k)
-        v = split_head(v)
+        q = split_head(self.linear_q(q))
+        k = split_head(self.linear_k(k))
+        v = split_head(self.linear_v(v))
 
         # 2) Calculate and scale scores.
         q = q * self.dim_per_head ** -0.5
