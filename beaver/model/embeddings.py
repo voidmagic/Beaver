@@ -13,6 +13,15 @@ def positional_encoding(embedding_dim, max_len=1e4):
     return pe
 
 
+def positional_encoding_2(dim, max_len=5000):
+    pe = torch.zeros(max_len, dim)
+    position = torch.arange(0, max_len).unsqueeze(1)
+    div_term = torch.exp((torch.arange(0, dim, 2, dtype=torch.float) * -(math.log(10000.0) / dim)))
+    pe[:, 0::2] = torch.sin(position.float() * div_term)
+    pe[:, 1::2] = torch.cos(position.float() * div_term)
+    return pe
+
+
 class Embedding(nn.Module):
     def __init__(self, embedding_dim, vocab_size, padding_idx, dropout):
         self.word_padding_idx = padding_idx

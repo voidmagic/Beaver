@@ -38,7 +38,9 @@ def valid(model, valid_dataset, step):
     hypothesis, references = [], []
 
     for batch in valid_dataset:
-        loss = model(batch.src, batch.tgt).mean()
+        loss, acc = model(batch.src, batch.tgt)
+        loss = loss.mean()
+        acc = acc.mean()
         total_loss += loss.data
         total += 1
 
@@ -56,7 +58,9 @@ def train(model, optimizer, train_dataset, valid_dataset):
     total_loss = 0.0
     model.zero_grad()
     for i, batch in enumerate(train_dataset):
-        loss = model(batch.src, batch.tgt).mean()
+        loss, acc = model(batch.src, batch.tgt)
+        loss = loss.mean()
+        acc = acc.mean()
         loss.backward()
         total_loss += loss.data
 
@@ -65,7 +69,8 @@ def train(model, optimizer, train_dataset, valid_dataset):
             model.zero_grad()
 
             if optimizer.n_step % opt.report_every == 0:
-                logger.info("step: %7d\tloss: %7f" % (optimizer.n_step, total_loss / opt.report_every / opt.grad_accum))
+                logger.info("step: %7d\t learning rate: %7f\t loss: %7f\t acc: %4f"
+                            % (optimizer.n_step, optimizer.lr, total_loss / opt.report_every / opt.grad_accum, acc))
                 total_loss = 0.0
 
             if optimizer.n_step % opt.save_every == 0:

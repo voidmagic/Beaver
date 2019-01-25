@@ -174,7 +174,7 @@ class MultiHeadedAttention(nn.Module):
         # In beam search, the target mask might be None
         if mask is not None:
             mask = mask.unsqueeze(1).expand_as(scores)
-            scores.masked_fill_(mask, -1e20)
+            scores.masked_fill_(mask, -1e18)
 
         # 3) Apply attention dropout and compute context vectors.
         weights = self.dropout(self.softmax(scores))

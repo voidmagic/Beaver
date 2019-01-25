@@ -14,10 +14,10 @@ class Generator(nn.Module):
     def __init__(self, hidden_size: int, tgt_vocab_size: int):
         self.vocab_size = tgt_vocab_size
         super(Generator, self).__init__()
-        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size, bias=False)
+        self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size)
         self.lsm = nn.LogSoftmax(dim=-1)
 
-        self.reset_parameters()
+        # self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.linear_hidden.weight)
@@ -38,7 +38,7 @@ class NMTModel(nn.Module):
         self.generator = generator
 
     def forward(self, src, tgt):
-        tgt = tgt[:, :-1]  # shift
+        tgt = tgt[:, :-1]  # shift left
         src_pad = src.eq(self.encoder.embedding.word_padding_idx)
         tgt_pad = tgt.eq(self.decoder.embedding.word_padding_idx)
 
@@ -94,5 +94,8 @@ class FullModel(nn.Module):
 
     def forward(self, src, tgt):
         scores = self.model(src, tgt)
-        loss = self.criterion(scores, tgt[:, 1:].contiguous().view(-1))
-        return loss.unsqueeze(0)
+        # shift right
+        tgt = tgt[:, 1:].contiguous().view(-1)
+        loss = self.criterion(scores, tgt)
+        _, tokens = tgt.topk(1)
+        return loss.unsqueeze(0), (tokens.view(-1) == tgt).float().unsqueeze(0) / tgt.size(0)
