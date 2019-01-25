@@ -13,7 +13,7 @@ class WarmAdam(object):
         self.n_step = init_step
         self.hidden_size = hidden_size
         self.warm_up_step = warm_up
-        self.optimizer = optim.Adam(params, betas=[0.9, 0.98], eps=1e-9)
+        self.optimizer = optim.Adam(params, betas=[0.9, 0.998], eps=1e-9)
 
     def step(self):
         self.n_step += 1

@@ -60,7 +60,7 @@ def train(model, optimizer, train_dataset, valid_dataset):
     for i, batch in enumerate(train_dataset):
         loss, acc = model(batch.src, batch.tgt)
         loss = loss.mean()
-        acc = acc.mean()
+        acc = acc.mean() * 100
         loss.backward()
         total_loss += loss.data
 
@@ -69,7 +69,7 @@ def train(model, optimizer, train_dataset, valid_dataset):
             model.zero_grad()
 
             if optimizer.n_step % opt.report_every == 0:
-                logger.info("step: %7d\t learning rate: %7f\t loss: %7f\t acc: %4f"
+                logger.info("step: %7d\t learning rate: %7f\t loss: %7f\t acc: %2f"
                             % (optimizer.n_step, optimizer.lr, total_loss / opt.report_every / opt.grad_accum, acc))
                 total_loss = 0.0
 
