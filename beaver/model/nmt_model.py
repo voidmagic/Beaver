@@ -95,7 +95,7 @@ class FullModel(nn.Module):
     def forward(self, src, tgt):
         scores = self.model(src, tgt)
         # shift right
-        tgt = tgt[:, 1:].contiguous().view(-1)
-        loss = self.criterion(scores, tgt)
-        _, tokens = tgt.topk(1)
-        return loss.unsqueeze(0), (tokens.view(-1) == tgt).float().sum().unsqueeze(0) / tgt.size(0)
+        tgt_r = tgt[:, 1:].contiguous().view(-1)
+        loss = self.criterion(scores, tgt_r)
+        _, tokens = scores.topk(1)
+        return loss.unsqueeze(0), (tokens.view(-1) == tgt_r).float().sum().unsqueeze(0) / tgt_r.size(0)
