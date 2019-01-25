@@ -37,15 +37,14 @@ class TranslationDataset(object):
 
     def __iter__(self):
         while True:
-            if self.train:
-                random.shuffle(self.batches)
-
             for minibatch in self.batches:
                 src = self.fields["src"].process([x.src for x in minibatch], self.device)
                 tgt = self.fields["tgt"].process([x.tgt for x in minibatch], self.device)
                 yield Batch(src=src, tgt=tgt, batch_size=len(minibatch))
 
-            if not self.train:
+            if self.train:
+                random.shuffle(self.batches)
+            else:
                 break
 
     def sort(self, examples):
