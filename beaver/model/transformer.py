@@ -85,7 +85,8 @@ class DecoderLayer(nn.Module):
         x = x + self.dropout(y)
 
         # encoder decoder attention
-        y = self.src_attn(self.norm[1](x), memory=enc_out, mask=src_mask)
+        norm_in = self.norm[1](x)
+        y = self.src_attn(norm_in, norm_in, norm_in, mask=src_mask)
         x = x + self.dropout(y)
 
         # feed forward
