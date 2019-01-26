@@ -55,23 +55,26 @@ def valid(model, valid_dataset, step):
 
 
 def train(model, optimizer, train_dataset, valid_dataset):
-    total_loss = 0.0
+    total_loss = total_acc = 0.0
     model.zero_grad()
     for i, batch in enumerate(train_dataset):
         loss, acc = model(batch.src, batch.tgt)
         loss = loss.mean()
-        acc = acc.mean() * 100
+        acc = acc.mean()
         loss.backward()
         total_loss += loss.data
+        total_acc += acc.data
 
         if (i + 1) % opt.grad_accum == 0:
             optimizer.step()
             model.zero_grad()
 
             if optimizer.n_step % opt.report_every == 0:
-                logger.info("step: %7d\t learning rate: %7f\t loss: %7f\t acc: %2f"
-                            % (optimizer.n_step, optimizer.lr, total_loss / opt.report_every / opt.grad_accum, acc))
-                total_loss = 0.0
+                logger.info("step: %7d\t learning rate: %7f\t loss: %7f\t acc: %2.2f"
+                            % (optimizer.n_step, optimizer.lr,
+                               total_loss / opt.report_every / opt.grad_accum,
+                               total_acc / opt.report_every / opt.grad_accum))
+                total_loss = total_acc = 0.0
 
             if optimizer.n_step % opt.save_every == 0:
                 with torch.set_grad_enabled(False):
