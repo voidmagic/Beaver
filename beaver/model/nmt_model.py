@@ -17,10 +17,11 @@ class Generator(nn.Module):
         self.linear_hidden = nn.Linear(hidden_size, tgt_vocab_size)
         self.lsm = nn.LogSoftmax(dim=-1)
 
-        # self.reset_parameters()
+        self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.linear_hidden.weight)
+        nn.init.constant_(self.linear_hidden.bias, 0.)
 
     def forward(self, dec_out):
         score = self.linear_hidden(dec_out)
@@ -94,8 +95,5 @@ class FullModel(nn.Module):
 
     def forward(self, src, tgt):
         scores = self.model(src, tgt)
-        # shift right
-        tgt_r = tgt[:, 1:].contiguous().view(-1)
-        loss = self.criterion(scores, tgt_r)
-        _, tokens = scores.topk(1)
-        return loss.unsqueeze(0), (tokens.view(-1) == tgt_r).float().sum().unsqueeze(0) / tgt_r.size(0)
+        loss = self.criterion(scores, tgt[:, 1:].contiguous().view(-1))
+        return loss.unsqueeze(0)

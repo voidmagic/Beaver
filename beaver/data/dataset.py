@@ -2,7 +2,7 @@
 
 import random
 from collections import namedtuple
-from typing import Dict, Tuple, List
+from typing import Dict
 
 import torch
 

@@ -33,17 +33,17 @@ class Embedding(nn.Module):
         self.register_buffer('pe', pe)
         self.dropout = nn.Dropout(p=dropout)
 
-        # todo: embedding weight initialize (not important)
-        # self.reset_parameters()
+        self.reset_parameters()
 
     def reset_parameters(self):
         nn.init.normal_(self.embedding.weight, mean=0.0, std=self.embedding_dim ** -0.5)
-        nn.init.constant_(self.embedding.weight[self.padding_idx], 0)
+        nn.init.constant_(self.embedding.weight[self.padding_idx], 0.)
 
     @property
     def padding_idx(self):
         return self.word_padding_idx
 
     def forward(self, x, timestep=0):
-        embedding = self.embedding(x) * (self.embedding_dim ** 0.5) + self.pe[timestep:timestep + x.size(1)]
+        embedding = self.embedding(x) * math.sqrt(self.embedding_dim) + self.pe[timestep:timestep + x.size(1)]
+        embedding = embedding * self.embedding_dim ** 0.5
         return self.dropout(embedding)
