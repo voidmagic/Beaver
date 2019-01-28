@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as func
 import torch.optim as optim
 
 
@@ -26,20 +25,27 @@ class WarmAdam(object):
 class LabelSmoothingLoss(nn.Module):
     def __init__(self, label_smoothing, tgt_vocab_size, ignore_index):
         self.padding_idx = ignore_index
-        super(LabelSmoothingLoss, self).__init__()
-
-        smoothing_value = label_smoothing / (tgt_vocab_size - 2)
-        one_hot = torch.full((tgt_vocab_size,), smoothing_value)
+        self.label_smoothing = label_smoothing
+        self.vocab = tgt_vocab_size
+        one_hot = torch.full((tgt_vocab_size,), label_smoothing / (tgt_vocab_size - 2))
         one_hot[self.padding_idx] = 0
-        self.register_buffer('one_hot', one_hot.unsqueeze(0))
 
-        self.confidence = 1.0 - label_smoothing
+        super(LabelSmoothingLoss, self).__init__()
+        self.register_buffer('one_hot', one_hot.unsqueeze(0))
         self.kl_div = nn.KLDivLoss(reduction='sum')
 
     def forward(self, output, target):
         numel = target.ne(self.padding_idx).float().sum()
-        model_prob = self.one_hot.repeat(target.size(0), 1)
-        model_prob.scatter_(1, target.unsqueeze(1), self.confidence)
-        model_prob.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
-        loss = self.kl_div(output, model_prob)
+        truth = self.one_hot.repeat(target.size(0), 1)
+        truth.scatter_(1, target.unsqueeze(1), 1 - self.label_smoothing)
+        truth.masked_fill_((target == self.padding_idx).unsqueeze(1), 0)
+        loss = self.kl_div(output, truth)
         return loss / numel
+
+    def forward_approx(self, output, target):
+        non_pad_mask = target.ne(self.padding_idx)
+        nll_loss = -output.gather(dim=-1, index=target.view(-1, 1))[non_pad_mask].sum()
+        smooth_loss = -output.sum(dim=-1, keepdim=True)[non_pad_mask].sum()
+        eps_i = self.label_smoothing / self.vocab
+        loss = (1. - self.label_smoothing) * nll_loss + eps_i * smooth_loss
+        return loss / non_pad_mask.float().sum()
