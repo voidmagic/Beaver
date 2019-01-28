@@ -24,29 +24,27 @@ loader = Loader(opt.model_path, opt, logger)
 
 def translate(dataset, fields, model):
 
-    total_sents = len(dataset.examples)
+    total = len(dataset.examples)
     already, hypothesis, references = 0, [], []
 
     for batch in dataset:
         predictions = parallel_beam_search(opt, model, batch, fields)
         hypothesis += [fields["tgt"].decode(p) for p in predictions]
-        references += [fields["tgt"].decode(t) for t in batch.tgt]
         already += len(predictions)
-        logger.info("Translated: %7d/%7d" % (already, total_sents))
+        logger.info("Translated: %7d/%7d" % (already, total))
 
-    origin = sorted(zip(hypothesis, references, dataset.seed), key=lambda t: t[2])
-    hypothesis = [o[0] for o in origin]
-    references = [o[1] for o in origin]
+    origin = sorted(zip(hypothesis, dataset.seed), key=lambda t: t[1])
+    hypothesis = [h for h, _ in origin]
     with open(opt.output, "w", encoding="UTF-8") as out_file:
         out_file.write("\n".join(hypothesis))
         out_file.write("\n")
 
-    logger.info("Translation finished. BLEU: %.2f." % calculate_bleu(hypothesis, references))
+    logger.info("Translation finished. ")
 
 
 def main():
     logger.info("Build dataset...")
-    dataset = build_dataset(opt, opt.trans, opt.vocab, device, train=False)
+    dataset = build_dataset(opt, [opt.source, opt.source], opt.vocab, device, train=False)
 
     logger.info("Build model...")
     model = NMTModel.load_model(loader, dataset.fields).to(device).eval()
