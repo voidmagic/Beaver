@@ -34,7 +34,7 @@ def model_opts(parser):
 
 
 def translate_opts(parser):
-    parser.add_argument("-source", type=str, help="Translation data")
+    parser.add_argument("-input", type=str, help="Translation data")
     parser.add_argument("-vocab", type=str, nargs="*", help="Vocab file")
     parser.add_argument("-output", default="output.txt", help="Path to output the predictions")
 

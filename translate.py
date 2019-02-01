@@ -44,7 +44,7 @@ def translate(dataset, fields, model):
 
 def main():
     logger.info("Build dataset...")
-    dataset = build_dataset(opt, [opt.source, opt.source], opt.vocab, device, train=False)
+    dataset = build_dataset(opt, [opt.input, opt.input], opt.vocab, device, train=False)
 
     logger.info("Build model...")
     model = NMTModel.load_model(loader, dataset.fields).to(device).eval()
