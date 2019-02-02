@@ -34,7 +34,7 @@ class LabelSmoothingLoss(nn.Module):
         self.register_buffer('one_hot', one_hot.unsqueeze(0))
         self.kl_div = nn.KLDivLoss(reduction='sum')
 
-    def forward(self, output, target):
+    def forward_1(self, output, target):
         numel = target.ne(self.padding_idx).float().sum()
         truth = self.one_hot.repeat(target.size(0), 1)
         truth.scatter_(1, target.unsqueeze(1), 1 - self.label_smoothing)
@@ -42,7 +42,7 @@ class LabelSmoothingLoss(nn.Module):
         loss = self.kl_div(output, truth)
         return loss / numel
 
-    def forward_approx(self, output, target):
+    def forward(self, output, target):
         non_pad_mask = target.ne(self.padding_idx)
         nll_loss = -output.gather(dim=-1, index=target.view(-1, 1))[non_pad_mask].sum()
         smooth_loss = -output.sum(dim=-1, keepdim=True)[non_pad_mask].sum()
