@@ -6,14 +6,7 @@ import torch
 import torch.nn as nn
 
 
-def positional_encoding_1(embedding_dim, max_len=5000):
-    position = torch.arange(0, max_len).unsqueeze(1).float()
-    div_term = torch.exp(torch.arange(0, embedding_dim // 2).float() * -(math.log(1.e4) / ((embedding_dim // 2) - 1)))
-    pe = torch.cat([torch.sin(position * div_term), torch.cos(position * div_term)], dim=1)
-    return pe
-
-
-def positional_encoding_2(dim, max_len=5000):
+def positional_encoding(dim, max_len=5000):
     pe = torch.zeros(max_len, dim)
     position = torch.arange(0, max_len).unsqueeze(1)
     div_term = torch.exp((torch.arange(0, dim, 2, dtype=torch.float) * -(math.log(10000.0) / dim)))
@@ -26,7 +19,7 @@ class Embedding(nn.Module):
     def __init__(self, embedding_dim, vocab_size, padding_idx, dropout):
         self.word_padding_idx = padding_idx
         self.embedding_dim = embedding_dim
-        pe = positional_encoding_2(embedding_dim)
+        pe = positional_encoding(embedding_dim)
         super(Embedding, self).__init__()
 
         self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
