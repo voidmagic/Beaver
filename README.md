@@ -172,7 +172,7 @@ After training, the model will saved into ${MODEL_PATH}, which is `train-${TIMES
 
 ## Translation
     ```
-    python3 ${BEAVER}/translate.py -input -vocab vocab.8k.share -model_path ${MODEL_PATH}
+    python3 ${BEAVER}/translate.py -input test.bpe.src -vocab vocab.8k.share -model_path ${MODEL_PATH}
     ```
 
 ## TODOs:
