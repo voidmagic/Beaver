@@ -167,11 +167,12 @@ The following part will take iwslt 14 de-en data as example to get throuth Beave
     python3 ${BEAVER}/train.py -train train.clean.src train.clean.tgt -valid valid.clean.src valid.clean.tgt -vocab vocab.8k.share 
     ```
 
-The full parameters can be found in `beaver/utils/parseopt.py`
+The full parameters can be found in `beaver/utils/parseopt.py`.
+After training, the model will saved into ${MODEL_PATH}, which is `train-${TIMESTAPE}` by default.
 
 ## Translation
     ```
-    python3 ${BEAVER}/translate.py -trans test.bpe.src test.bpe.tgt -vocab vocab.8k.share
+    python3 ${BEAVER}/translate.py -input -vocab vocab.8k.share -model_path ${MODEL_PATH}
     ```
 
 ## TODOs:
