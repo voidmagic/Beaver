@@ -154,8 +154,8 @@ The following part will take iwslt 14 de-en data as example to get throuth Beave
 
     Build vocabulary for each language:
     ```
-    cat train.clean.src | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.tgt
-    cat train.clean.tgt | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.src
+    cat train.clean.src | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.src
+    cat train.clean.tgt | python ${BEAVER}/tools/build_vocab.py 8000 > vocab.8k.tgt
     ```
     Or if you want a shared vocabulary:
     ```
